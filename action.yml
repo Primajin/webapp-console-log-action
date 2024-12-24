@@ -1,0 +1,39 @@
+name: 'WebApp Console Log Action'
+description: 'Runs a web application in a browser, waits a few seconds, and posts console logs as a comment to the PR.'
+author: 'Your Name'
+inputs:
+  webapp-url:
+    description: 'The URL of the web application to test'
+    required: true
+  wait-time:
+    description: 'Time in milliseconds to wait before capturing console logs'
+    required: false
+    default: 5000
+outputs:
+  console-log:
+    description: 'The captured console log'
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: '14'
+    - name: Install dependencies
+      run: npm install
+    - name: Run Chromium and capture console logs
+      uses: browser-actions/setup-chromium@v1
+    - run: |
+        npx playwright install chromium
+        node .github/scripts/capture-console.js
+      env:
+        WEBAPP_URL: ${{ inputs.webapp-url }}
+        WAIT_TIME: ${{ inputs.wait-time }}
+    - name: Post console output to PR
+      if: github.event_name == 'pull_request'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: node .github/scripts/post-comment.js
+branding:
+  icon: 'browser'
+  color: 'blue'
