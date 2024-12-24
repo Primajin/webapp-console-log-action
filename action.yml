@@ -35,5 +35,5 @@ runs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: node .github/scripts/post-comment.js
 branding:
-  icon: 'browser'
+  icon: 'clipboard'
   color: 'blue'
