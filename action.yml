@@ -33,7 +33,7 @@ inputs:
     required: false
     default: 'Console Logs'
 outputs:
-  console-log:
+  console:
     description: 'The captured console log'
 runs:
   using: 'composite'
