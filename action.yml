@@ -60,13 +60,18 @@ runs:
       run: npm ci
       shell: bash
 
-    - name: Run Chromium and Capture Console Logs
-      uses: browser-actions/setup-chromium@v1
+    - name: Setup Chromium
+      run: npx playwright install chromium
+      shell: bash
+
+    - name: Set GitHub Path
+      run: echo "$GITHUB_ACTION_PATH" >> $GITHUB_PATH
+      shell: bash
+      env:
+        GITHUB_ACTION_PATH: ${{ github.action_path }}
 
     - name: Execute Capture Script
-      run: |
-        npx playwright install chromium
-        node capture-console.js
+      run: node capture-console.js
       env:
         WEBAPP_URL: ${{ inputs.webapp-url }}
         WAIT_TIME: ${{ inputs.wait-time }}
