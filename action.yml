@@ -60,13 +60,11 @@ runs:
       run: npm ci
       shell: bash
 
-    - name: Run Chromium and Capture Console Logs
+    - name: Setup Chromium
       uses: browser-actions/setup-chromium@v1
 
     - name: Execute Capture Script
-      run: |
-        npx playwright install chromium
-        node capture-console.js
+      run: node capture-console.js
       env:
         WEBAPP_URL: ${{ inputs.webapp-url }}
         WAIT_TIME: ${{ inputs.wait-time }}
