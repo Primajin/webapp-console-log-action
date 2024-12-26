@@ -63,6 +63,12 @@ runs:
     - name: Setup Chromium
       uses: browser-actions/setup-chromium@v1
 
+    - name: Set GitHub Path
+      run: echo "$GITHUB_ACTION_PATH" >> $GITHUB_PATH
+      shell: bash
+      env:
+        GITHUB_ACTION_PATH: ${{ github.action_path }}
+
     - name: Execute Capture Script
       run: node capture-console.js
       env:
