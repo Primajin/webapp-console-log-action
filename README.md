@@ -18,11 +18,14 @@ jobs:
   capture-console-logs:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Have your web-app built
         run: build stuff or get from other build action
 
-      - name: Checkout code
-        uses: actions/checkout@v2
+      - name: Serve web-app locally or for example publish to gh-pages
+        run: npx http-server ./ -p 3000 &
 
       - name: Capture Console Logs
         uses: Primajin/webapp-console-log-action@v1
