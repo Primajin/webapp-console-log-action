@@ -61,7 +61,8 @@ runs:
       shell: bash
 
     - name: Setup Chromium
-      uses: browser-actions/setup-chromium@v1
+      run: npx playwright install chromium
+      shell: bash
 
     - name: Set GitHub Path
       run: echo "$GITHUB_ACTION_PATH" >> $GITHUB_PATH
