@@ -1,0 +1,29 @@
+name: "Should fail"
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - closed
+
+permissions:
+  pull-requests: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    name: Install a server and serve a file with console logs. Then post console to PR.
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Run http-server on port 3000 in the background
+        run: npx http-server ./ -p 3000 &
+      - name: Use WebApp Console Log Action
+        uses: ./
+        with:
+          wait-time: 5
+          webapp-url: 'http://localhost:3000'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
