@@ -1,6 +1,6 @@
 name: 'WebApp Console Log Action'
 description: 'Runs a web application in a browser, waits a few seconds, and posts console logs as a comment to the PR.'
-author: 'Your Name'
+author: 'Jannis Hell'
 inputs:
   webapp-url:
     description: 'The URL of the web application to test'

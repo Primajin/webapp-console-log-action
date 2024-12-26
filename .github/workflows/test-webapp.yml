@@ -1,0 +1,41 @@
+name: "Test Web Application"
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - closed
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    name: Make sure it builds. Then show a preview.
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '21'
+          cache: 'npm'
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-${{ hashFiles('package-lock.json') }}
+          restore-keys: npm-
+      - name: Install dependencies
+        run: npm ci
+      - name: Install http-server
+        run: npm install -g http-server
+      - name: Run http-server on port 3000
+        run: http-server ./ -p 3000
+      - name: Use WebApp Console Log Action
+        uses: ../../action.yml
+        with:
+          webapp-url: 'http://localhost:3000'
+          wait-time: 5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
