@@ -6,9 +6,8 @@
     "repository": "",
     "author": "Jannis Hell (@Primajin)",
     "description": "Capture console.log output from a web page",
-    "type": "module",
     "scripts": {
-        "publish": "ncc build capture-console.js -o dist --license licenses.txt",
+        "publish": "ncc build capture-console.mjs -o dist --license licenses.txt",
         "publish:watch": "npx nodemon -x npm run publish --ext js,json --ignore dist",
         "lint": "xo",
         "lint:fix": "xo --fix",
