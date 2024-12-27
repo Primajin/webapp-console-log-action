@@ -61,17 +61,11 @@ runs:
       shell: bash
 
     - name: Setup Chromium
-      run: npx playwright install chromium --with-deps
+      run: npx playwright install chromium
       shell: bash
-
-    - name: Change directory
-      run: cd $GITHUB_ACTION_PATH
-      shell: bash
-      env:
-        GITHUB_ACTION_PATH: ${{ github.action_path }}
 
     - name: Execute Capture Script
-      run: node capture-console.js
+      run: node $GITHUB_ACTION_PATH/capture-console.js
       env:
         WEBAPP_URL: ${{ inputs.webapp-url }}
         WAIT_TIME: ${{ inputs.wait-time }}
@@ -83,7 +77,7 @@ runs:
       id: capture-console
       run: |
         echo 'console<<EOF' >> $GITHUB_OUTPUT
-        echo $(cat console_output.json) >> $GITHUB_OUTPUT
+        jq -c . $GITHUB_ACTION_PATH/console_output.json >> $GITHUB_OUTPUT
         echo 'EOF' >> $GITHUB_OUTPUT
       shell: bash
 
@@ -93,7 +87,7 @@ runs:
         # Create a markdown file and add a main heading
         echo "# ${{ inputs.headline }}" > formatted_console_output.md
         # Loop through each key in the JSON file
-        for key in $(jq -r 'keys[]' console_output.json); do
+        for key in $(jq -r 'keys[]' $GITHUB_ACTION_PATH/console_output.json); do
           # Capitalize the first character of the key
           capitalized_key=$(echo "$key" | awk '{print toupper(substr($0, 1, 1)) tolower(substr($0, 2))}')
           # Add a subheading for each log level with matching emoji if show-emoji is true
