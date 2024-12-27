@@ -47,18 +47,14 @@ runs:
         node-version: '22'
         cache: 'npm'
 
-    - name: Install Dependencies
-      run: npm install
-      shell: bash
-
     - name: Setup Chromium
       run: npx playwright install chromium
       shell: bash
 
     - name: Execute Capture Script
       run: |
-        cp $GITHUB_ACTION_PATH/capture-console.js .
-        node capture-console.js
+        cp -R $GITHUB_ACTION_PATH/dist .
+        node dist/index.js
       env:
         WEBAPP_URL: ${{ inputs.webapp-url }}
         WAIT_TIME: ${{ inputs.wait-time }}
