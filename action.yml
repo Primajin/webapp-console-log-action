@@ -71,7 +71,13 @@ runs:
         GITHUB_ACTION_PATH: ${{ github.action_path }}
 
     - name: Execute Capture Script
-      run: node capture-console.js
+      run: |
+        echo $GITHUB_ACTION_PATH
+        echo $GITHUB_PATH
+        echo $github.action_path
+        echo $PWD        
+        cd $GITHUB_ACTION_PATH
+        node capture-console.js
       env:
         WEBAPP_URL: ${{ inputs.webapp-url }}
         WAIT_TIME: ${{ inputs.wait-time }}
