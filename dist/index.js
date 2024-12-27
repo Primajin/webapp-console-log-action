@@ -27501,9 +27501,9 @@ const commentTag = _actions_core__WEBPACK_IMPORTED_MODULE_1__.getInput('comment-
 
 await _actions_exec__WEBPACK_IMPORTED_MODULE_2__.exec('sh', ['-c', `
     echo "Calling thollander/actions-comment-pull-request@v3"
-    echo "::set-output name=comment-tag::${commentTag}"
-    echo "::set-output name=file-path::formatted_console_output.md"
-    echo "::set-env name=GITHUB_TOKEN::${node_process__WEBPACK_IMPORTED_MODULE_0__.env.GITHUB_TOKEN}"
+    echo "comment-tag=${commentTag}" >> $GITHUB_OUTPUT
+    echo "file-path=formatted_console_output.md" >> $GITHUB_OUTPUT
+    echo "GITHUB_TOKEN=${node_process__WEBPACK_IMPORTED_MODULE_0__.env.GITHUB_TOKEN}" >> $GITHUB_ENV
     uses: thollander/actions-comment-pull-request@v3
   `]);
 

@@ -115,9 +115,9 @@ const commentTag = core.getInput('comment-tag') || 'console-log';
 
 await exec.exec('sh', ['-c', `
     echo "Calling thollander/actions-comment-pull-request@v3"
-    echo "::set-output name=comment-tag::${commentTag}"
-    echo "::set-output name=file-path::formatted_console_output.md"
-    echo "::set-env name=GITHUB_TOKEN::${process.env.GITHUB_TOKEN}"
+    echo "comment-tag=${commentTag}" >> $GITHUB_OUTPUT
+    echo "file-path=formatted_console_output.md" >> $GITHUB_OUTPUT
+    echo "GITHUB_TOKEN=${process.env.GITHUB_TOKEN}" >> $GITHUB_ENV
     uses: thollander/actions-comment-pull-request@v3
   `]);
 
