@@ -61,11 +61,11 @@ runs:
       shell: bash
 
     - name: Setup Chromium
-      run: npx playwright install chromium
+      run: npx playwright install chromium --with-deps
       shell: bash
 
-    - name: Set GitHub Path
-      run: echo "$GITHUB_ACTION_PATH" >> $GITHUB_PATH
+    - name: Change directory
+      run: cd $GITHUB_ACTION_PATH
       shell: bash
       env:
         GITHUB_ACTION_PATH: ${{ github.action_path }}
