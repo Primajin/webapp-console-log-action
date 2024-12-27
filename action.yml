@@ -66,7 +66,7 @@ runs:
 
     - name: Execute Capture Script
       run: |
-        cd $GITHUB_ACTION_PATH
+        cp $GITHUB_ACTION_PATH/capture-console.js $GITHUB_WORKSPACE
         node capture-console.js
       env:
         WEBAPP_URL: ${{ inputs.webapp-url }}
@@ -78,7 +78,6 @@ runs:
     - name: Set Output
       id: capture-console
       run: |
-        cd $GITHUB_ACTION_PATH
         echo 'console<<EOF' >> $GITHUB_OUTPUT
         jq -c . console_output.json >> $GITHUB_OUTPUT
         echo 'EOF' >> $GITHUB_OUTPUT
@@ -87,7 +86,6 @@ runs:
     - name: Format Console Output  # Step to format the console output into GitHub Flavored Markdown
       id: format_console_output
       run: |
-        cd $GITHUB_ACTION_PATH
         # Create a markdown file and add a main heading
         echo "# ${{ inputs.headline }}" > formatted_console_output.md
         # Loop through each key in the JSON file
