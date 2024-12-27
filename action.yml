@@ -64,12 +64,10 @@ runs:
       run: npx playwright install chromium
       shell: bash
 
-    - name: Set working directory
-      run: cd $GITHUB_ACTION_PATH
-      shell: bash
-
     - name: Execute Capture Script
-      run: node capture-console.js
+      run: |
+        cd $GITHUB_ACTION_PATH
+        node capture-console.js
       env:
         WEBAPP_URL: ${{ inputs.webapp-url }}
         WAIT_TIME: ${{ inputs.wait-time }}
@@ -80,6 +78,7 @@ runs:
     - name: Set Output
       id: capture-console
       run: |
+        cd $GITHUB_ACTION_PATH
         echo 'console<<EOF' >> $GITHUB_OUTPUT
         jq -c . console_output.json >> $GITHUB_OUTPUT
         echo 'EOF' >> $GITHUB_OUTPUT
@@ -88,6 +87,7 @@ runs:
     - name: Format Console Output  # Step to format the console output into GitHub Flavored Markdown
       id: format_console_output
       run: |
+        cd $GITHUB_ACTION_PATH
         # Create a markdown file and add a main heading
         echo "# ${{ inputs.headline }}" > formatted_console_output.md
         # Loop through each key in the JSON file
@@ -123,7 +123,7 @@ runs:
       uses: thollander/actions-comment-pull-request@v3
       with:
         comment-tag: ${{ inputs.comment-tag }}
-        file-path: formatted_console_output.md
+        file-path: $GITHUB_ACTION_PATH/formatted_console_output.md
       env:
         GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }}
 
