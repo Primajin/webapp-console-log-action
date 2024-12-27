@@ -47,29 +47,14 @@ runs:
         node-version: '22'
         cache: 'npm'
 
-    - name: Cache Dependencies
-      uses: actions/cache@v4
-      with:
-        path: ~/.npm
-        key: npm-${{ hashFiles('package-lock.json') }}
-        restore-keys: |
-          npm-${{ hashFiles('package-lock.json') }}
-          npm-
-
-    - name: Install Dependencies
-      run: npm ci
-      shell: bash
-
     - name: Setup Chromium
       run: npx playwright install chromium
       shell: bash
 
-    - name: Set working directory
-      run: cd $GITHUB_ACTION_PATH
-      shell: bash
-
     - name: Execute Capture Script
-      run: node capture-console.js
+      run: |
+        cp -R $GITHUB_ACTION_PATH/dist .
+        node dist/index.js
       env:
         WEBAPP_URL: ${{ inputs.webapp-url }}
         WAIT_TIME: ${{ inputs.wait-time }}
@@ -123,7 +108,7 @@ runs:
       uses: thollander/actions-comment-pull-request@v3
       with:
         comment-tag: ${{ inputs.comment-tag }}
-        file-path: formatted_console_output.md
+        file-path: $GITHUB_ACTION_PATH/formatted_console_output.md
       env:
         GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }}
 
