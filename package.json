@@ -1,8 +1,8 @@
 {
     "name": "webapp-console-log-action",
     "version": "1.0.0",
-    "main": "capture-console.js",
-    "license": "MIT",
+    "main": "src/index.js",
+    "license": "The Unlicense",
     "repository": "",
     "author": "Jannis Hell (@Primajin)",
     "description": "Capture console.log output from a web page",

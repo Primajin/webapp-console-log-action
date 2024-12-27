@@ -36,5 +36,5 @@ outputs:
   console:
     description: 'The captured console log'
 runs:
-  using: 'node22'
+  using: 'node20'
   main: 'src/index.js'
