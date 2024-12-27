@@ -61,23 +61,17 @@ runs:
       shell: bash
 
     - name: Setup Chromium
-      run: npx playwright install chromium
+      run: npx playwright install chromium --with-deps
       shell: bash
 
-    - name: Set GitHub Path
-      run: echo "$GITHUB_ACTION_PATH" >> $GITHUB_PATH
+    - name: Change directory
+      run: cd $GITHUB_ACTION_PATH
       shell: bash
       env:
         GITHUB_ACTION_PATH: ${{ github.action_path }}
 
     - name: Execute Capture Script
-      run: |
-        echo $GITHUB_ACTION_PATH
-        echo $GITHUB_PATH
-        echo $github.action_path
-        echo $PWD        
-        cd $GITHUB_ACTION_PATH
-        node capture-console.js
+      run: node capture-console.js
       env:
         WEBAPP_URL: ${{ inputs.webapp-url }}
         WAIT_TIME: ${{ inputs.wait-time }}
