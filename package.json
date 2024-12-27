@@ -8,6 +8,7 @@
     "description": "Capture console.log output from a web page",
     "type": "module",
     "scripts": {
+        "publish": "ncc build src/index.js -o dist --license licenses.txt",
         "lint": "xo",
         "lint:fix": "xo --fix",
         "lint:watch": "npx nodemon -x npm run lint:fix --ext js,json"
@@ -16,6 +17,7 @@
         "@actions/core": "^1.11.1",
         "@actions/github": "^6.0.0",
         "@octokit/rest": "^21.0.2",
+        "@vercel/ncc": "^0.38.3",
         "playwright": "^1.49.1"
     },
     "devDependencies": {

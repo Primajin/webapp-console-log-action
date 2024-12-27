@@ -37,4 +37,4 @@ outputs:
     description: 'The captured console log'
 runs:
   using: 'node20'
-  main: 'src/index.js'
+  main: 'dist/index.js'
