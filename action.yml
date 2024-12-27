@@ -47,17 +47,8 @@ runs:
         node-version: '22'
         cache: 'npm'
 
-    - name: Cache Dependencies
-      uses: actions/cache@v4
-      with:
-        path: ~/.npm
-        key: npm-${{ hashFiles('package-lock.json') }}
-        restore-keys: |
-          npm-${{ hashFiles('package-lock.json') }}
-          npm-
-
     - name: Install Dependencies
-      run: npm ci
+      run: npm install
       shell: bash
 
     - name: Setup Chromium
@@ -66,7 +57,7 @@ runs:
 
     - name: Execute Capture Script
       run: |
-        cp $GITHUB_ACTION_PATH/capture-console.js $GITHUB_WORKSPACE
+        cp $GITHUB_ACTION_PATH/capture-console.js .
         node capture-console.js
       env:
         WEBAPP_URL: ${{ inputs.webapp-url }}
