@@ -38,10 +38,6 @@ outputs:
 runs:
   using: 'composite'
   steps:
-    - name: Set working directory
-      run: cd $GITHUB_ACTION_PATH
-      shell: bash
-
     - name: Checkout Code
       uses: actions/checkout@v4
 
@@ -66,6 +62,10 @@ runs:
 
     - name: Setup Chromium
       run: npx playwright install chromium
+      shell: bash
+
+    - name: Set working directory
+      run: cd $GITHUB_ACTION_PATH
       shell: bash
 
     - name: Execute Capture Script
