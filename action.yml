@@ -87,8 +87,16 @@ runs:
 #      run: ls -la $GITHUB_WORKSPACE
 #      shell: bash
 
+    - name: DEBUG TEMP - List files in current directory #TODO: remove this
+      run: ls -la
+      shell: bash
+
     - name: Go to action path
       run: cd $GITHUB_ACTION_PATH
+      shell: bash
+
+    - name: DEBUG TEMP - List files in current directory #TODO: remove this
+      run: ls -la
       shell: bash
 
     - name: Install dependencies
