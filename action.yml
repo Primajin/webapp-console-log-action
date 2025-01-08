@@ -44,7 +44,6 @@ outputs:
 
 defaults:
   run:
-    shell: bash
     working-directory: $GITHUB_ACTION_PATH
 
 runs:
@@ -74,6 +73,7 @@ runs:
 
     - name: DEBUG TEMP - List files in root #TODO: remove this
       run: ls -la
+      shell: bash
 
     - name: DEBUG TEMP - List files in app #TODO: remove this
       run: ls -la app
