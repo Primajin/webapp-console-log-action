@@ -45,6 +45,18 @@ jobs:
           
           EOF
 
+      - name: Upload index.html
+        uses: actions/upload-artifact@v3
+        with:
+          name: index-html
+          path: index.html
+
+      - name: Download index.html
+        uses: actions/download-artifact@v3
+        with:
+          name: index-html
+          path: .
+
       - name: Use WebApp Console Log Action
         uses: ./
         with:
