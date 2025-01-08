@@ -5,25 +5,9 @@ branding:
   icon: 'clipboard'
   color: 'blue'
 inputs:
-  webapp-url:
-    description: 'The URL of the web application'
+  artifact-name:
+    description: 'The name of the artifact to download'
     required: true
-  wait-time:
-    description: 'The wait time before capturing logs'
-    required: false
-    default: 2500
-  show-emoji:
-    description: 'Whether to show emojis in the output'
-    required: false
-    default: true
-  min-log-level:
-    description: 'The minimum log level to capture (verbose, info, warning, error)'
-    required: false
-    default: 'verbose'
-  max-log-level:
-    description: 'The maximum log level to allow (verbose, info, warning, error). Set to error to disable failing.'
-    required: false
-    default: 'info'
   comment-tag:
     description: 'The tag to use for the comment - so it can be replaced, you may pass empty string to always post a new comment'
     required: false
@@ -32,6 +16,25 @@ inputs:
     description: 'The headline for the console logs comment'
     required: false
     default: 'Console Logs'
+  max-log-level:
+    description: 'The maximum log level to allow (verbose, info, warning, error). Set to error to disable failing.'
+    required: false
+    default: 'info'
+  min-log-level:
+    description: 'The minimum log level to capture (verbose, info, warning, error)'
+    required: false
+    default: 'verbose'
+  show-emoji:
+    description: 'Whether to show emojis in the output'
+    required: false
+    default: true
+  wait-time:
+    description: 'The wait time before capturing logs'
+    required: false
+    default: 2500
+  webapp-url:
+    description: 'The URL of the web application'
+    required: true
 outputs:
   console:
     description: 'The captured console log'
@@ -53,6 +56,12 @@ runs:
         path: ~/.npm
         key: npm-${{ hashFiles('package-lock.json') }}
         restore-keys: npm-
+
+    - name: Download artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: .
 
     - name: DEBUG TEMP - List files #TODO: remove this
       run: ls -la

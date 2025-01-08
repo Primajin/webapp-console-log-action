@@ -45,9 +45,16 @@ jobs:
           
           EOF
 
+      - name: Upload index.html
+        uses: actions/upload-artifact@v4
+        with:
+          name: index-html
+          path: index.html
+
       - name: Use WebApp Console Log Action
         uses: ./
         with:
+          artifact-name: index-html
           comment-tag: console-log2
           headline: No emojis, min log level warning, max log level error
           max-log-level: error
