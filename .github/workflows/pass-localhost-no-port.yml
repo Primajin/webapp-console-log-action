@@ -1,4 +1,4 @@
-name: "Positive Test"
+name: "Positive Test - has localhost but no port"
 
 on:
   pull_request:
@@ -12,9 +12,9 @@ permissions:
   pull-requests: write
 
 jobs:
-  build:
+  pass:
     runs-on: ubuntu-latest
-    name: Should pass - Install a server and serve a file with console logs. Then post console to PR.
+    name: Should pass - has localhost but no port
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -55,12 +55,11 @@ jobs:
         uses: ./
         with:
           artifact-name: index-html
-          comment-tag: console-log2
-          headline: No emojis, min log level warning, max log level error
+          comment-tag: console-log3
+          headline: Should pass - has localhost but no port
           max-log-level: error
           min-log-level: warning
-          show-emoji: false
           wait-time: 5
-          webapp-url: 'http://localhost:3000'
+          webapp-url: 'http://localhost'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

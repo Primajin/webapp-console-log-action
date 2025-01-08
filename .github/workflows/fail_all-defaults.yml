@@ -1,0 +1,60 @@
+name: "Negative Test - all defaults"
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - closed
+
+permissions:
+  pull-requests: write
+
+jobs:
+  fail:
+    runs-on: ubuntu-latest
+    name: Should fail - has warnings and errors, uses all defaults
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create fake App with console outputs
+        run: |
+          touch index.html
+  
+          cat > index.html << EOF
+          
+          <!DOCTYPE html>
+          <html>
+          <head>
+          <title>New Page</title>
+          </head>
+          <body>
+              <h1>Hello, World!</h1>
+              <script>
+                console.debug('This is a debug message and likely hidden in the fail workflow');
+                console.info('This is an info in the fail workflow');
+                console.log('This is a log in the fail workflow');
+                console.log('This is another log in the fail workflow');
+                console.warn('This is a warning in the fail workflow');
+                console.error('This is an error in the fail workflow');
+              </script>
+          </body>
+          </html>
+          
+          EOF
+
+      - name: Upload index.html
+        uses: actions/upload-artifact@v4
+        with:
+          name: index-html
+          path: index.html
+
+      - name: Use WebApp Console Log Action
+        uses: ./
+        with:
+          artifact-name: index-html
+          webapp-url: 'http://localhost'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

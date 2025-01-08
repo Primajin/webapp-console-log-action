@@ -9,7 +9,7 @@ branding:
 inputs:
   artifact-name:
     description: 'The name of the artifact to download'
-    required: true
+    required: false
   comment-tag:
     description: 'The tag to use for the comment - so it can be replaced, you may pass empty string to always post a new comment'
     required: false
@@ -26,6 +26,9 @@ inputs:
     description: 'The minimum log level to capture (verbose, info, warning, error)'
     required: false
     default: 'verbose'
+  port:
+    description: 'The port to run the http-server on'
+    required: false
   show-emoji:
     description: 'Whether to show emojis in the output'
     required: false
@@ -45,6 +48,24 @@ outputs:
 runs:
   using: 'composite'
   steps:
+    - name: Check artifact name requirement
+      run: |
+        if [[ "${{ inputs.webapp-url }}" == *"http://localhost"* && -z "${{ inputs.artifact-name }}" ]]; then
+          echo "Error: artifact-name is required when webapp-url points to localhost."
+          exit 1
+        fi
+      shell: bash
+
+    - name: Set port to 3000 if webapp-url is localhost and port is not set
+      id: set-port
+      run: |
+        if [[ "${{ inputs.webapp-url }}" == *"http://localhost"* && -z "${{ inputs.port }}" ]]; then
+          echo "port=3000" >> $GITHUB_OUTPUT
+        else
+          echo "port=${{ inputs.port }}" >> $GITHUB_OUTPUT
+        fi
+      shell: bash
+
     - name: Checkout Code
       uses: actions/checkout@v4
 
@@ -62,13 +83,15 @@ runs:
         restore-keys: npm-
 
     - name: Download artifact
+      if: contains(inputs.webapp-url, 'http://localhost')
       uses: actions/download-artifact@v4
       with:
         name: ${{ inputs.artifact-name }}
         path: app
 
-    - name: Run http-server on port 3000 in the background #TODO: add port and directory as inputs
-      run: npx http-server app/ -p 3000 &
+    - name: Run http-server in the background
+      if: contains(inputs.webapp-url, 'http://localhost')
+      run: npx http-server app/ -p ${{ inputs.port }} &
       shell: bash
 
     - name: Set ACTION_PATH environment variable
@@ -90,10 +113,11 @@ runs:
       shell: bash
       working-directory: ${{ env.ACTION_PATH }}
       env:
-        WEBAPP_URL: ${{ inputs.webapp-url }}
-        WAIT_TIME: ${{ inputs.wait-time }}
-        MIN_LOG_LEVEL: ${{ inputs.min-log-level }}
         MAX_LOG_LEVEL: ${{ inputs.max-log-level }}
+        MIN_LOG_LEVEL: ${{ inputs.min-log-level }}
+        PORT: ${{ inputs.port }}
+        WAIT_TIME: ${{ inputs.wait-time }}
+        WEBAPP_URL: ${{ inputs.webapp-url }}
 
     - name: Set Output
       id: capture-console

@@ -1,0 +1,24 @@
+name: "Negative Test - missing artifact name"
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - closed
+
+permissions:
+  pull-requests: write
+
+jobs:
+  fail:
+    runs-on: ubuntu-latest
+    name: Should fail early - has localhost but no artifact name
+    steps:
+      - name: Use WebApp Console Log Action
+        uses: ./
+        with:
+          webapp-url: 'http://localhost'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

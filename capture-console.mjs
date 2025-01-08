@@ -14,8 +14,11 @@ const consoleMessages = {
 };
 
 const logLevels = ['verbose', 'info', 'warning', 'error'];
-const minLogLevel = process.env.MIN_LOG_LEVEL || 'verbose';
-const maxLogLevel = process.env.MAX_LOG_LEVEL || 'info';
+const minLogLevel = process.env.MIN_LOG_LEVEL || logLevels[0];
+const maxLogLevel = process.env.MAX_LOG_LEVEL || logLevels[1];
+const webAppUrl = process.env.WEBAPP_URL || 'http://localhost';
+const port = process.env.PORT || '';
+const waitTime = process.env.WAIT_TIME || 5000;
 
 const shouldCapture = level => logLevels.indexOf(level) >= logLevels.indexOf(minLogLevel);
 const shouldFail = level => logLevels.indexOf(level) > logLevels.indexOf(maxLogLevel);
@@ -55,10 +58,7 @@ page.on('console', message => {
 	}
 });
 
-const webAppUrl = process.env.WEBAPP_URL || 'http://localhost:3000';
-const waitTime = process.env.WAIT_TIME || 5000;
-
-await page.goto(webAppUrl);
+await page.goto(port ? `${webAppUrl}:${port}` : webAppUrl);
 await page.waitForTimeout(Number.parseInt(waitTime, 10)); // Wait for the specified time
 
 console.log(' ');
@@ -82,4 +82,3 @@ if (shouldFailAction) {
 }
 
 console.log(' ');
-

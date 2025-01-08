@@ -1,4 +1,4 @@
-name: "Negative Test"
+name: "Positive Test - all parameters set"
 
 on:
   pull_request:
@@ -12,9 +12,9 @@ permissions:
   pull-requests: write
 
 jobs:
-  build:
+  pass:
     runs-on: ubuntu-latest
-    name: Should fail - Install a server and serve a file with console logs. Then post console to PR.
+    name: Should pass - has all parameters set
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -22,7 +22,7 @@ jobs:
       - name: Create fake App with console outputs
         run: |
           touch index.html
-  
+          
           cat > index.html << EOF
           
           <!DOCTYPE html>
@@ -33,12 +33,12 @@ jobs:
           <body>
               <h1>Hello, World!</h1>
               <script>
-                console.debug('This is a debug message and likely hidden in the fail workflow');
-                console.info('This is an info in the fail workflow');
-                console.log('This is a log in the fail workflow');
-                console.log('This is another log in the fail workflow');
-                console.warn('This is a warning in the fail workflow');
-                console.error('This is an error in the fail workflow');
+                console.debug('This is a debug message and likely hidden in the pass workflow');
+                console.info('This is an info in the pass workflow');
+                console.log('This is a log in the pass workflow');
+                console.log('This is another log in the pass workflow');
+                console.warn('This is a warning in the pass workflow');
+                console.error('This is an error in the pass workflow');
               </script>
           </body>
           </html>
@@ -55,7 +55,13 @@ jobs:
         uses: ./
         with:
           artifact-name: index-html
+          comment-tag: console-log2
+          headline: No emojis, min log level warning, max log level error
+          max-log-level: error
+          min-log-level: warning
+          port: 3001
+          show-emoji: false
           wait-time: 5
-          webapp-url: 'http://localhost:3000'
+          webapp-url: 'http://localhost'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

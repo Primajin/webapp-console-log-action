@@ -1,0 +1,26 @@
+name: "Positive Test - uses external URL"
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - closed
+
+permissions:
+  pull-requests: write
+
+jobs:
+  pass:
+    runs-on: ubuntu-latest
+    name: Should pass - uses external url
+    steps:
+      - name: Use WebApp Console Log Action
+        uses: ./
+        with:
+          comment-tag: console-log4
+          headline: External - Eyesbound.com
+          webapp-url: 'https://eyesbound.com'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
