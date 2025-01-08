@@ -87,29 +87,20 @@ runs:
 #      run: ls -la $GITHUB_WORKSPACE
 #      shell: bash
 
-    - name: DEBUG TEMP - List files in current directory #TODO: remove this
-      run: ls -la
-      shell: bash
-
-    - name: Go to action path
-      run: cd $GITHUB_ACTION_PATH
-      shell: bash
-
-    - name: DEBUG TEMP - List files in current directory #TODO: remove this
-      run: ls -la
-      shell: bash
-
     - name: Install dependencies
       run: npm ci
       shell: bash
+      working-directory: $GITHUB_ACTION_PATH
 
     - name: Setup Chromium
       run: npx playwright install chromium
       shell: bash
+      working-directory: $GITHUB_ACTION_PATH
 
     - name: Execute Capture Script
       run: node capture-console.mjs
       shell: bash
+      working-directory: $GITHUB_ACTION_PATH
       env:
         WEBAPP_URL: ${{ inputs.webapp-url }}
         WAIT_TIME: ${{ inputs.wait-time }}
@@ -123,6 +114,7 @@ runs:
         jq -c . console_output.json >> $GITHUB_OUTPUT
         echo 'EOF' >> $GITHUB_OUTPUT
       shell: bash
+      working-directory: $GITHUB_ACTION_PATH
 
     - name: Format Console Output  # Step to format the console output into GitHub Flavored Markdown
       id: format_console_output
@@ -156,13 +148,14 @@ runs:
           echo "" >> formatted_console_output.md
         done
       shell: bash
+      working-directory: $GITHUB_ACTION_PATH
 
     - name: Post Console Output to PR
       if: github.event_name == 'pull_request'
       uses: thollander/actions-comment-pull-request@v3
       with:
         comment-tag: ${{ inputs.comment-tag }}
-        file-path: formatted_console_output.md
+        file-path: $GITHUB_ACTION_PATH/formatted_console_output.md
       env:
         GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }}
 
