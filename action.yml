@@ -86,21 +86,24 @@ runs:
 #    - name: GITHUB_WORKSPACE #TODO: remove this
 #      run: ls -la $GITHUB_WORKSPACE
 #      shell: bash
+    - name: Set ACTION_PATH environment variable
+      run: echo "ACTION_PATH=${GITHUB_ACTION_PATH}" >> $GITHUB_ENV
+      shell: bash
 
     - name: Install dependencies
       run: npm ci
       shell: bash
-      working-directory: ${{ GITHUB_ACTION_PATH }}
+      working-directory: ${{ env.ACTION_PATH }}
 
     - name: Setup Chromium
       run: npx playwright install chromium
       shell: bash
-      working-directory: ${{ GITHUB_ACTION_PATH }}
+      working-directory: ${{ env.ACTION_PATH }}
 
     - name: Execute Capture Script
       run: node capture-console.mjs
       shell: bash
-      working-directory: ${{ GITHUB_ACTION_PATH }}
+      working-directory: ${{ env.ACTION_PATH }}
       env:
         WEBAPP_URL: ${{ inputs.webapp-url }}
         WAIT_TIME: ${{ inputs.wait-time }}
@@ -114,7 +117,7 @@ runs:
         jq -c . console_output.json >> $GITHUB_OUTPUT
         echo 'EOF' >> $GITHUB_OUTPUT
       shell: bash
-      working-directory: ${{ GITHUB_ACTION_PATH }}
+      working-directory: ${{ env.ACTION_PATH }}
 
     - name: Format Console Output  # Step to format the console output into GitHub Flavored Markdown
       id: format_console_output
@@ -148,7 +151,7 @@ runs:
           echo "" >> formatted_console_output.md
         done
       shell: bash
-      working-directory: ${{ GITHUB_ACTION_PATH }}
+      working-directory: ${{ env.ACTION_PATH }}
 
     - name: Post Console Output to PR
       if: github.event_name == 'pull_request'
