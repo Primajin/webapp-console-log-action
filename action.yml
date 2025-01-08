@@ -67,28 +67,32 @@ runs:
         name: ${{ inputs.artifact-name }}
         path: app
 
-    - name: DEBUG TEMP - List files in root #TODO: remove this
-      run: ls -la
+    - name: Run http-server on port 3000 in the background #TODO: add port and directory as inputs
+      run: npx http-server app/ -p 3000 &
       shell: bash
 
-    - name: DEBUG TEMP - List files in app #TODO: remove this
-      run: ls -la app
-      shell: bash
+#    - name: DEBUG TEMP - List files in root #TODO: remove this
+#      run: ls -la
+#      shell: bash
+#
+#    - name: DEBUG TEMP - List files in app #TODO: remove this
+#      run: ls -la app
+#      shell: bash
+#
+#    - name: GITHUB_ACTION_PATH #TODO: remove this
+#      run: ls -la $GITHUB_ACTION_PATH
+#      shell: bash
+#
+#    - name: GITHUB_WORKSPACE #TODO: remove this
+#      run: ls -la $GITHUB_WORKSPACE
+#      shell: bash
 
-    - name: GITHUB_ACTION_PATH #TODO: remove this
-      run: ls -la $GITHUB_ACTION_PATH
-      shell: bash
-
-    - name: GITHUB_WORKSPACE #TODO: remove this
-      run: ls -la $GITHUB_WORKSPACE
+    - name: Go to action path
+      run: cd $GITHUB_ACTION_PATH
       shell: bash
 
     - name: Install dependencies
       run: npm ci
-      shell: bash
-
-    - name: Run http-server on port 3000 in the background #TODO: add port and directory as inputs
-      run: npx http-server app/ -p 3000 &
       shell: bash
 
     - name: Setup Chromium
