@@ -18,6 +18,33 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Create fake App with console outputs
+        run: |
+          touch index.html
+          
+          cat > index.html << EOF
+          
+          <!DOCTYPE html>
+          <html>
+          <head>
+          <title>New Page</title>
+          </head>
+          <body>
+              <h1>Hello, World!</h1>
+              <script>
+                console.debug('This is a debug message and likely hidden in the pass workflow');
+                console.info('This is an info in the pass workflow');
+                console.log('This is a log in the pass workflow');
+                console.log('This is another log in the pass workflow');
+                console.warn('This is a warning in the pass workflow');
+                console.error('This is an error in the pass workflow');
+              </script>
+          </body>
+          </html>
+          
+          EOF
+
       - name: Use WebApp Console Log Action
         uses: ./
         with:
