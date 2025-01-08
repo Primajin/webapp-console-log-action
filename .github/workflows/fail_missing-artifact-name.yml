@@ -31,7 +31,7 @@ jobs:
       - name: Check previous step result and set job result
         if: always()
         run: |
-          if [ "${{ steps.webapp_console_log.status }}" == "failure" ]; then
+          if [ "${{ steps.webapp_console_log.outcome }}" == "failure" ]; then
             echo "Previous step failed as expected, marking job as success"
             exit 0
           else
