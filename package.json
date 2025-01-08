@@ -1,12 +1,11 @@
 {
     "name": "webapp-console-log-action",
     "version": "1.0.0",
-    "main": "capture-console.js",
+    "main": "capture-console.mjs",
     "license": "MIT",
     "repository": "",
     "author": "Jannis Hell (@Primajin)",
     "description": "Capture console.log output from a web page",
-    "type": "module",
     "scripts": {
         "lint": "xo",
         "lint:fix": "xo --fix",
@@ -14,7 +13,6 @@
     },
     "dependencies": {
         "@actions/core": "^1.11.1",
-        "@octokit/rest": "^21.0.2",
         "playwright": "^1.49.1"
     },
     "devDependencies": {

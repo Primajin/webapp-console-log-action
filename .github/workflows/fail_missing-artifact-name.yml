@@ -1,0 +1,40 @@
+name: "Negative Test - missing artifact name"
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - closed
+
+permissions:
+  pull-requests: write
+
+jobs:
+  fail:
+    runs-on: ubuntu-latest
+    name: Should fail early - has localhost but no artifact name
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Use WebApp Console Log Action
+        id: webapp_console_log
+        uses: ./
+        with:
+          webapp-url: 'http://localhost'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: Check previous step result and set job result
+        if: always()
+        run: |
+          if [ "${{ steps.webapp_console_log.outcome }}" == "failure" ]; then
+            echo "Previous step failed as expected, marking job as success"
+            exit 0
+          else
+            echo "Previous step did not fail, failing the job"
+            exit 1
+          fi

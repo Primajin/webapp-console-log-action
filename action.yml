@@ -1,29 +1,15 @@
 name: 'WebApp Console Log Action'
 description: 'An action to capture and post console logs from a web application'
 author: 'Jannis Hell (@Primajin)'
+
 branding:
   icon: 'clipboard'
   color: 'blue'
+
 inputs:
-  webapp-url:
-    description: 'The URL of the web application'
-    required: true
-  wait-time:
-    description: 'The wait time before capturing logs'
+  artifact-name:
+    description: 'The name of the artifact to download'
     required: false
-    default: 2500
-  show-emoji:
-    description: 'Whether to show emojis in the output'
-    required: false
-    default: true
-  min-log-level:
-    description: 'The minimum log level to capture (verbose, info, warning, error)'
-    required: false
-    default: 'verbose'
-  max-log-level:
-    description: 'The maximum log level to allow (verbose, info, warning, error). Set to error to disable failing.'
-    required: false
-    default: 'info'
   comment-tag:
     description: 'The tag to use for the comment - so it can be replaced, you may pass empty string to always post a new comment'
     required: false
@@ -32,12 +18,54 @@ inputs:
     description: 'The headline for the console logs comment'
     required: false
     default: 'Console Logs'
+  max-log-level:
+    description: 'The maximum log level to allow (verbose, info, warning, error). Set to error to disable failing.'
+    required: false
+    default: 'info'
+  min-log-level:
+    description: 'The minimum log level to capture (verbose, info, warning, error)'
+    required: false
+    default: 'verbose'
+  port:
+    description: 'The port to run the http-server on'
+    required: false
+  show-emoji:
+    description: 'Whether to show emojis in the output'
+    required: false
+    default: true
+  wait-time:
+    description: 'The wait time before capturing logs'
+    required: false
+    default: 2500
+  webapp-url:
+    description: 'The URL of the web application'
+    required: true
+
 outputs:
   console:
     description: 'The captured console log'
+
 runs:
   using: 'composite'
   steps:
+    - name: Check artifact name requirement
+      run: |
+        if [[ "${{ inputs.webapp-url }}" == *"http://localhost"* && -z "${{ inputs.artifact-name }}" ]]; then
+          echo "Error: artifact-name is required when webapp-url points to localhost."
+          exit 1
+        fi
+      shell: bash
+
+    - name: Set port to 3000 if webapp-url is localhost and port is not set
+      id: set-port
+      run: |
+        if [[ "${{ inputs.webapp-url }}" == *"http://localhost"* && -z "${{ inputs.port }}" ]]; then
+          echo "port=3000" >> $GITHUB_ENV
+        else
+          echo "port=${{ inputs.port }}" >> $GITHUB_ENV
+        fi
+      shell: bash
+
     - name: Checkout Code
       uses: actions/checkout@v4
 
@@ -47,35 +75,49 @@ runs:
         node-version: '22'
         cache: 'npm'
 
-    - name: Cache Dependencies
+    - name: Cache dependencies
       uses: actions/cache@v4
       with:
         path: ~/.npm
         key: npm-${{ hashFiles('package-lock.json') }}
-        restore-keys: |
-          npm-${{ hashFiles('package-lock.json') }}
-          npm-
+        restore-keys: npm-
 
-    - name: Install Dependencies
+    - name: Download artifact
+      if: contains(inputs.webapp-url, 'http://localhost')
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: app
+
+    - name: Run http-server in the background
+      if: contains(inputs.webapp-url, 'http://localhost')
+      run: npx http-server app/ -p ${{ env.port }} &
+      shell: bash
+
+    - name: Set ACTION_PATH environment variable
+      run: echo "ACTION_PATH=${GITHUB_ACTION_PATH}" >> $GITHUB_ENV
+      shell: bash
+
+    - name: Install dependencies
       run: npm ci
       shell: bash
+      working-directory: ${{ env.ACTION_PATH }}
 
     - name: Setup Chromium
       run: npx playwright install chromium
       shell: bash
-
-    - name: Set working directory
-      run: cd $GITHUB_ACTION_PATH
-      shell: bash
+      working-directory: ${{ env.ACTION_PATH }}
 
     - name: Execute Capture Script
-      run: node capture-console.js
-      env:
-        WEBAPP_URL: ${{ inputs.webapp-url }}
-        WAIT_TIME: ${{ inputs.wait-time }}
-        MIN_LOG_LEVEL: ${{ inputs.min-log-level }}
-        MAX_LOG_LEVEL: ${{ inputs.max-log-level }}
+      run: node capture-console.mjs
       shell: bash
+      working-directory: ${{ env.ACTION_PATH }}
+      env:
+        MAX_LOG_LEVEL: ${{ inputs.max-log-level }}
+        MIN_LOG_LEVEL: ${{ inputs.min-log-level }}
+        PORT: ${{ env.port }}
+        WAIT_TIME: ${{ inputs.wait-time }}
+        WEBAPP_URL: ${{ inputs.webapp-url }}
 
     - name: Set Output
       id: capture-console
@@ -84,6 +126,7 @@ runs:
         jq -c . console_output.json >> $GITHUB_OUTPUT
         echo 'EOF' >> $GITHUB_OUTPUT
       shell: bash
+      working-directory: ${{ env.ACTION_PATH }}
 
     - name: Format Console Output  # Step to format the console output into GitHub Flavored Markdown
       id: format_console_output
@@ -117,13 +160,14 @@ runs:
           echo "" >> formatted_console_output.md
         done
       shell: bash
+      working-directory: ${{ env.ACTION_PATH }}
 
     - name: Post Console Output to PR
       if: github.event_name == 'pull_request'
       uses: thollander/actions-comment-pull-request@v3
       with:
         comment-tag: ${{ inputs.comment-tag }}
-        file-path: formatted_console_output.md
+        file-path: ${{ env.ACTION_PATH }}/formatted_console_output.md
       env:
         GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }}
 
@@ -136,4 +180,3 @@ runs:
       shell: bash
       env:
         SHOULD_FAIL_ACTION: ${{ env.SHOULD_FAIL_ACTION }}
-
