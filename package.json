@@ -1,21 +1,18 @@
 {
     "name": "webapp-console-log-action",
     "version": "1.0.0",
-    "main": "index.js",
+    "main": "capture-console.mjs",
     "license": "MIT",
     "repository": "",
     "author": "Jannis Hell (@Primajin)",
     "description": "Capture console.log output from a web page",
     "scripts": {
-        "publish": "ncc build capture-console.mjs -o . --license licenses.txt",
         "lint": "xo",
         "lint:fix": "xo --fix",
         "lint:watch": "npx nodemon -x npm run lint:fix --ext js,json"
     },
     "dependencies": {
         "@actions/core": "^1.11.1",
-        "@octokit/rest": "^21.0.2",
-        "@vercel/ncc": "^0.38.3",
         "playwright": "^1.49.1"
     },
     "devDependencies": {

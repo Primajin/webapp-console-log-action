@@ -58,10 +58,6 @@ runs:
       run: npm ci
       shell: bash
 
-#    - name: Transform into Common JS
-#      run: npm run publish
-#      shell: bash
-
     - name: Run http-server on port 3000 in the background #TODO: add port and directory as inputs
       run: npx http-server ./ -p 3000 &
       shell: bash
@@ -78,7 +74,6 @@ runs:
         WAIT_TIME: ${{ inputs.wait-time }}
         MIN_LOG_LEVEL: ${{ inputs.min-log-level }}
         MAX_LOG_LEVEL: ${{ inputs.max-log-level }}
-
 
     - name: Set Output
       id: capture-console
