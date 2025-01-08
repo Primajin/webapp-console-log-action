@@ -56,9 +56,11 @@ runs:
 
     - name: Install dependencies
       run: npm ci
+      shell: bash
 
     - name: Run http-server on port 3000 in the background #TODO: add port and directory as inputs
       run: npx http-server ./ -p 3000 &
+      shell: bash
 
     - name: Setup Chromium
       run: npx playwright install chromium
@@ -68,12 +70,13 @@ runs:
       run: |
         cp -R $GITHUB_ACTION_PATH/dist .
         node dist/index.js
+      shell: bash
       env:
         WEBAPP_URL: ${{ inputs.webapp-url }}
         WAIT_TIME: ${{ inputs.wait-time }}
         MIN_LOG_LEVEL: ${{ inputs.min-log-level }}
         MAX_LOG_LEVEL: ${{ inputs.max-log-level }}
-      shell: bash
+
 
     - name: Set Output
       id: capture-console
