@@ -7,7 +7,7 @@
     "author": "Jannis Hell (@Primajin)",
     "description": "Capture console.log output from a web page",
     "scripts": {
-        "publish": "ncc build capture-console.js -o . --license licenses.txt",
+        "publish": "ncc build capture-console.mjs -o . --license licenses.txt",
         "lint": "xo",
         "lint:fix": "xo --fix",
         "lint:watch": "npx nodemon -x npm run lint:fix --ext js,json"
