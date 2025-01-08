@@ -126,7 +126,7 @@ runs:
       uses: thollander/actions-comment-pull-request@v3
       with:
         comment-tag: ${{ inputs.comment-tag }}
-        file-path: $GITHUB_ACTION_PATH/formatted_console_output.md
+        file-path: formatted_console_output.md
       env:
         GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }}
 
