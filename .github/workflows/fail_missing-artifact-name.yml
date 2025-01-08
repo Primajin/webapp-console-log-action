@@ -16,6 +16,9 @@ jobs:
     runs-on: ubuntu-latest
     name: Should fail early - has localhost but no artifact name
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Use WebApp Console Log Action
         uses: ./
         with:

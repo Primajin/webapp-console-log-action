@@ -16,6 +16,9 @@ jobs:
     runs-on: ubuntu-latest
     name: Should pass - uses external url
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Use WebApp Console Log Action
         uses: ./
         with:
