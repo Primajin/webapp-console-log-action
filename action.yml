@@ -42,9 +42,13 @@ outputs:
   console:
     description: 'The captured console log'
 
+defaults:
+  run:
+    shell: bash
+    working-directory: $GITHUB_ACTION_PATH
+
 runs:
   using: 'composite'
-  working-directory: $GITHUB_ACTION_PATH
   steps:
     - name: Checkout Code
       uses: actions/checkout@v4
@@ -70,7 +74,6 @@ runs:
 
     - name: DEBUG TEMP - List files in root #TODO: remove this
       run: ls -la
-      shell: bash
 
     - name: DEBUG TEMP - List files in app #TODO: remove this
       run: ls -la app
