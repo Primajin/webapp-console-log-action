@@ -67,9 +67,7 @@ runs:
       shell: bash
 
     - name: Execute Capture Script
-      run: |
-        cp -R $GITHUB_ACTION_PATH/dist .
-        node dist/index.js
+      run: node dist/index.js
       shell: bash
       env:
         WEBAPP_URL: ${{ inputs.webapp-url }}
