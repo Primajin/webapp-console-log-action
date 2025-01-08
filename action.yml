@@ -42,10 +42,6 @@ outputs:
   console:
     description: 'The captured console log'
 
-defaults:
-  run:
-    working-directory: $GITHUB_ACTION_PATH
-
 runs:
   using: 'composite'
   steps:
@@ -77,6 +73,14 @@ runs:
 
     - name: DEBUG TEMP - List files in app #TODO: remove this
       run: ls -la app
+      shell: bash
+
+    - name: GITHUB_ACTION_PATH #TODO: remove this
+      run: ls -la $GITHUB_ACTION_PATH
+      shell: bash
+
+    - name: GITHUB_WORKSPACE #TODO: remove this
+      run: ls -la $GITHUB_WORKSPACE
       shell: bash
 
     - name: Install dependencies
