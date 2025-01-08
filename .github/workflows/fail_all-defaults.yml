@@ -52,6 +52,7 @@ jobs:
           path: index.html
 
       - name: Use WebApp Console Log Action
+        id: webapp_console_log
         uses: ./
         with:
           artifact-name: index-html
@@ -63,7 +64,7 @@ jobs:
       - name: Check previous step result and set job result
         if: always()
         run: |
-          if [ "${{ job.status }}" == "failure" ]; then
+          if [ "${{ steps.webapp_console_log.status }}" == "failure" ]; then
             echo "Previous step failed as expected, marking job as success"
             exit 0
           else
