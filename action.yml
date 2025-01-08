@@ -58,6 +58,10 @@ runs:
       run: npm ci
       shell: bash
 
+    - name: Transform into Common JS
+      run: npm run publish
+      shell: bash
+
     - name: Run http-server on port 3000 in the background #TODO: add port and directory as inputs
       run: npx http-server ./ -p 3000 &
       shell: bash
@@ -67,7 +71,7 @@ runs:
       shell: bash
 
     - name: Execute Capture Script
-      run: node dist/index.js
+      run: node index.js
       shell: bash
       env:
         WEBAPP_URL: ${{ inputs.webapp-url }}
