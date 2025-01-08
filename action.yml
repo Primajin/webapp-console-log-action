@@ -1,9 +1,11 @@
 name: 'WebApp Console Log Action'
 description: 'An action to capture and post console logs from a web application'
 author: 'Jannis Hell (@Primajin)'
+
 branding:
   icon: 'clipboard'
   color: 'blue'
+
 inputs:
   artifact-name:
     description: 'The name of the artifact to download'
@@ -35,11 +37,14 @@ inputs:
   webapp-url:
     description: 'The URL of the web application'
     required: true
+
 outputs:
   console:
     description: 'The captured console log'
+
 runs:
   using: 'composite'
+  working-directory: $GITHUB_ACTION_PATH
   steps:
     - name: Checkout Code
       uses: actions/checkout@v4
@@ -61,14 +66,14 @@ runs:
       uses: actions/download-artifact@v4
       with:
         name: ${{ inputs.artifact-name }}
-        path: .
+        path: app
 
-    - name: DEBUG TEMP - List files #TODO: remove this
+    - name: DEBUG TEMP - List files in root #TODO: remove this
       run: ls -la
       shell: bash
 
-    - name: DEBUG TEMP - show contents of index.html #TODO: remove this
-      run: cat index.html
+    - name: DEBUG TEMP - List files in app #TODO: remove this
+      run: ls -la app
       shell: bash
 
     - name: Install dependencies
@@ -76,7 +81,7 @@ runs:
       shell: bash
 
     - name: Run http-server on port 3000 in the background #TODO: add port and directory as inputs
-      run: npx http-server ./ -p 3000 &
+      run: npx http-server app/ -p 3000 &
       shell: bash
 
     - name: Setup Chromium
