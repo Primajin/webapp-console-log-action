@@ -58,3 +58,13 @@ jobs:
           webapp-url: 'http://localhost'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check previous step result and set job result
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "failure" ]; then
+            echo "Previous step failed as expected, marking job as success"
+            exit 0
+          else
+            echo "Previous step did not fail, failing the job"
+            exit 1
