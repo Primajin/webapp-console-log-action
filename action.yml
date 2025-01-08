@@ -60,9 +60,9 @@ runs:
       id: set-port
       run: |
         if [[ "${{ inputs.webapp-url }}" == *"http://localhost"* && -z "${{ inputs.port }}" ]]; then
-          echo "port=3000" >> $GITHUB_OUTPUT
+          echo "port=3000" >> $GITHUB_ENV
         else
-          echo "port=${{ inputs.port }}" >> $GITHUB_OUTPUT
+          echo "port=${{ inputs.port }}" >> $GITHUB_ENV
         fi
       shell: bash
 
@@ -91,7 +91,7 @@ runs:
 
     - name: Run http-server in the background
       if: contains(inputs.webapp-url, 'http://localhost')
-      run: npx http-server app/ -p ${{ inputs.port }} &
+      run: npx http-server app/ -p ${{ env.port }} &
       shell: bash
 
     - name: Set ACTION_PATH environment variable
@@ -115,7 +115,7 @@ runs:
       env:
         MAX_LOG_LEVEL: ${{ inputs.max-log-level }}
         MIN_LOG_LEVEL: ${{ inputs.min-log-level }}
-        PORT: ${{ inputs.port }}
+        PORT: ${{ env.port }}
         WAIT_TIME: ${{ inputs.wait-time }}
         WEBAPP_URL: ${{ inputs.webapp-url }}
 
