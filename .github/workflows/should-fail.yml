@@ -18,8 +18,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: Run http-server on port 3000 in the background
-        run: npx http-server ./ -p 3000 &
       - name: Use WebApp Console Log Action
         uses: ./
         with:
