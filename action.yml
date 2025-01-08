@@ -71,21 +71,6 @@ runs:
       run: npx http-server app/ -p 3000 &
       shell: bash
 
-#    - name: DEBUG TEMP - List files in root #TODO: remove this
-#      run: ls -la
-#      shell: bash
-#
-#    - name: DEBUG TEMP - List files in app #TODO: remove this
-#      run: ls -la app
-#      shell: bash
-#
-#    - name: GITHUB_ACTION_PATH #TODO: remove this
-#      run: ls -la $GITHUB_ACTION_PATH
-#      shell: bash
-#
-#    - name: GITHUB_WORKSPACE #TODO: remove this
-#      run: ls -la $GITHUB_WORKSPACE
-#      shell: bash
     - name: Set ACTION_PATH environment variable
       run: echo "ACTION_PATH=${GITHUB_ACTION_PATH}" >> $GITHUB_ENV
       shell: bash
