@@ -3,59 +3,105 @@ import process from 'node:process';
 import {chromium} from 'playwright';
 import core from '@actions/core';
 
+// Launches a Chromium browser instance and prepares a new page.
 const browser = await chromium.launch();
 const page = await browser.newPage();
 
-const consoleMessages = {
-	verbose: [],
-	info: [],
-	warning: [],
-	error: [],
+/**
+ * Map to store captured console messages categorized by log levels.
+ * @type {Map<string, string[]>}
+ */
+const consoleMessages = new Map([
+	['verbose', []],
+	['info', []],
+	['warning', []],
+	['error', []],
+]);
+
+/**
+ * Regular expressions to filter log messages based on their content.
+ * @type {Object.<string, RegExp>}
+ */
+const filters = {
+	verbose: new RegExp(process.env.REGEXP_VERBOSE || '.*'),
+	info: new RegExp(process.env.REGEXP_INFO || '.*'),
+	warning: new RegExp(process.env.REGEXP_WARNING || '.*'),
+	error: new RegExp(process.env.REGEXP_ERROR || '.*'),
 };
 
-const filterError = new RegExp(process.env.REGEXP_ERROR || '.*');
-const filterInfo = new RegExp(process.env.REGEXP_INFO || '.*');
-const filterVerbose = new RegExp(process.env.REGEXP_VERBOSE || '.*');
-const filterWarning = new RegExp(process.env.REGEXP_WARNING || '.*');
+/**
+ * Array of log levels in order of severity.
+ * @type {string[]}
+ */
 const logLevels = ['verbose', 'info', 'warning', 'error'];
+
+/**
+ * Minimum log level to capture.
+ * @type {string}
+ * @default 'verbose'
+ */
 const minLogLevel = process.env.MIN_LOG_LEVEL || logLevels[0];
+
+/**
+ * Maximum log level to allow before failing the action.
+ * @type {string}
+ * @default 'info'
+ */
 const maxLogLevel = process.env.MAX_LOG_LEVEL || logLevels[1];
+
+/**
+ * Port to run the web application on.
+ * @type {string}
+ * @default ''
+ */
 const port = process.env.PORT || '';
+
+/**
+ * Wait time before capturing logs.
+ * @type {number}
+ * @default 5000
+ */
 const waitTime = process.env.WAIT_TIME || 5000;
+
+/**
+ * URL of the web application.
+ * @type {string}
+ * @default 'http://localhost'
+ */
 const webAppUrl = process.env.WEBAPP_URL || 'http://localhost';
 
+/**
+ * Determines if a log message should be captured based on its level and content.
+ * @param {string} level - The log level of the message.
+ * @param {string} message - The log message content.
+ * @returns {boolean} - True if the message should be captured, false otherwise.
+ */
 const shouldCapture = (level, message) => {
 	if (logLevels.indexOf(level) < logLevels.indexOf(minLogLevel)) {
 		return false;
 	}
 
-	switch (level) {
-		case 'verbose': {
-			return filterVerbose.test(message);
-		}
-
-		case 'info': {
-			return filterInfo.test(message);
-		}
-
-		case 'warning': {
-			return filterWarning.test(message);
-		}
-
-		case 'error': {
-			return filterError.test(message);
-		}
-
-		default: {
-			return true;
-		}
-	}
+	return filters[level].test(message);
 };
 
+/**
+ * Determines if the action should fail based on the log level.
+ * @param {string} level - The log level of the message.
+ * @returns {boolean} - True if the action should fail, false otherwise.
+ */
 const shouldFail = level => logLevels.indexOf(level) > logLevels.indexOf(maxLogLevel);
 
+/**
+ * Flag to indicate if the action should fail.
+ * @type {boolean}
+ * @default false
+ */
 let shouldFailAction = false;
 
+/**
+ * Mapping of console message types to log levels.
+ * @type {Object.<string, string>}
+ */
 const logLevelMapping = {
 	log: 'info',
 	debug: 'verbose',
@@ -77,12 +123,16 @@ const logLevelMapping = {
 	timeEnd: 'verbose',
 };
 
+/**
+ * Event listener for console messages from the page.
+ * @param {ConsoleMessage} message - The console message object.
+ */
 page.on('console', message => {
 	const messageType = message.type();
 	const logLevel = logLevelMapping[messageType] || 'info';
 	const logMessage = message.text();
 	if (shouldCapture(logLevel, logMessage)) {
-		consoleMessages[logLevel].push(logMessage);
+		consoleMessages.get(logLevel).push(logMessage);
 	}
 
 	if (shouldFail(logLevel)) {
@@ -94,16 +144,16 @@ await page.goto(port ? `${webAppUrl}:${port}` : webAppUrl);
 await page.waitForTimeout(Number.parseInt(waitTime, 10)); // Wait for the specified time
 
 console.log(' ');
-console.log('Console messages:', consoleMessages);
+console.log('Console messages:', Object.fromEntries(consoleMessages));
 
 // Remove keys with empty arrays
-for (const key in consoleMessages) {
-	if (consoleMessages[key].length === 0) {
-		delete consoleMessages[key];
+for (const [key, value] of consoleMessages) {
+	if (value.length === 0) {
+		consoleMessages.delete(key);
 	}
 }
 
-await fs.writeFile('console_output.json', JSON.stringify(consoleMessages, null, 2));
+await fs.writeFile('console_output.json', JSON.stringify(Object.fromEntries(consoleMessages), null, 2));
 
 await browser.close();
 
