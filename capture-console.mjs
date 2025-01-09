@@ -13,14 +13,45 @@ const consoleMessages = {
 	error: [],
 };
 
+const filterError = new RegExp(process.env.REGEXP_ERROR || '.*');
+const filterInfo = new RegExp(process.env.REGEXP_INFO || '.*');
+const filterVerbose = new RegExp(process.env.REGEXP_VERBOSE || '.*');
+const filterWarning = new RegExp(process.env.REGEXP_WARNING || '.*');
 const logLevels = ['verbose', 'info', 'warning', 'error'];
 const minLogLevel = process.env.MIN_LOG_LEVEL || logLevels[0];
 const maxLogLevel = process.env.MAX_LOG_LEVEL || logLevels[1];
-const webAppUrl = process.env.WEBAPP_URL || 'http://localhost';
 const port = process.env.PORT || '';
 const waitTime = process.env.WAIT_TIME || 5000;
+const webAppUrl = process.env.WEBAPP_URL || 'http://localhost';
 
-const shouldCapture = level => logLevels.indexOf(level) >= logLevels.indexOf(minLogLevel);
+const shouldCapture = (level, message) => {
+	if (logLevels.indexOf(level) < logLevels.indexOf(minLogLevel)) {
+		return false;
+	}
+
+	switch (level) {
+		case 'verbose': {
+			return filterVerbose.test(message);
+		}
+
+		case 'info': {
+			return filterInfo.test(message);
+		}
+
+		case 'warning': {
+			return filterWarning.test(message);
+		}
+
+		case 'error': {
+			return filterError.test(message);
+		}
+
+		default: {
+			return true;
+		}
+	}
+};
+
 const shouldFail = level => logLevels.indexOf(level) > logLevels.indexOf(maxLogLevel);
 
 let shouldFailAction = false;
@@ -49,8 +80,9 @@ const logLevelMapping = {
 page.on('console', message => {
 	const messageType = message.type();
 	const logLevel = logLevelMapping[messageType] || 'info';
-	if (shouldCapture(logLevel)) {
-		consoleMessages[logLevel].push(message.text());
+	const logMessage = message.text();
+	if (shouldCapture(logLevel, logMessage)) {
+		consoleMessages[logLevel].push(logMessage);
 	}
 
 	if (shouldFail(logLevel)) {
