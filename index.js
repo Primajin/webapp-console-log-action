@@ -23,10 +23,10 @@ const consoleMessages = new Map([
  * @type {Object.<string, RegExp>}
  */
 const filters = {
-	verbose: new RegExp(process.env.REGEXP_VERBOSE || '.*'),
-	info: new RegExp(process.env.REGEXP_INFO || '.*'),
-	warning: new RegExp(process.env.REGEXP_WARNING || '.*'),
-	error: new RegExp(process.env.REGEXP_ERROR || '.*'),
+	error: new RegExp(process.env.REGEXP_ERROR || '^$'),
+	info: new RegExp(process.env.REGEXP_INFO || '^$'),
+	verbose: new RegExp(process.env.REGEXP_VERBOSE || '^$'),
+	warning: new RegExp(process.env.REGEXP_WARNING || '^$'),
 };
 
 /**
@@ -81,7 +81,7 @@ const shouldCapture = (level, message) => {
 		return false;
 	}
 
-	return filters[level].test(message);
+	return !filters[level].test(message);
 };
 
 /**
