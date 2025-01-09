@@ -71,18 +71,19 @@ const waitTime = process.env.WAIT_TIME || 5000;
 const webAppUrl = process.env.WEBAPP_URL || 'http://localhost';
 
 /**
- * Determines if a log message should be captured based on its level and content.
+ * Filters out parts of the message based on the regular expression.
  * @param {string} level - The log level of the message.
  * @param {string} message - The log message content.
+ * @returns {string} - The filtered message.
+ */
+const filterMessage = (level, message) => message.replace(filters[level], '').trim();
+
+/**
+ * Determines if a log message should be captured based on its level.
+ * @param {string} level - The log level of the message.
  * @returns {boolean} - True if the message should be captured, false otherwise.
  */
-const shouldCapture = (level, message) => {
-	if (logLevels.indexOf(level) < logLevels.indexOf(minLogLevel)) {
-		return false;
-	}
-
-	return !filters[level].test(message);
-};
+const shouldCapture = level => logLevels.indexOf(level) >= logLevels.indexOf(minLogLevel);
 
 /**
  * Determines if the action should fail based on the log level.
@@ -131,8 +132,11 @@ page.on('console', message => {
 	const messageType = message.type();
 	const logLevel = logLevelMapping[messageType] || 'info';
 	const logMessage = message.text();
-	if (shouldCapture(logLevel, logMessage)) {
-		consoleMessages.get(logLevel).push(logMessage);
+	if (shouldCapture(logLevel)) {
+		const filteredMessage = filterMessage(logLevel, logMessage);
+		if (filteredMessage.length > 0) {
+			consoleMessages.get(logLevel).push(filteredMessage);
+		}
 	}
 
 	if (shouldFail(logLevel)) {
