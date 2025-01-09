@@ -136,11 +136,10 @@ page.on('console', message => {
 		const filteredMessage = filterMessage(logLevel, logMessage);
 		if (filteredMessage.length > 0) {
 			consoleMessages.get(logLevel).push(filteredMessage);
+			if (shouldFail(logLevel)) {
+				shouldFailAction = true;
+			}
 		}
-	}
-
-	if (shouldFail(logLevel)) {
-		shouldFailAction = true;
 	}
 });
 
