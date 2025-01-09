@@ -122,7 +122,7 @@ runs:
       working-directory: ${{ env.ACTION_PATH }}
 
     - name: Execute Capture Script
-      run: node capture-console.mjs
+      run: node index.js
       shell: bash
       working-directory: ${{ env.ACTION_PATH }}
       env:
