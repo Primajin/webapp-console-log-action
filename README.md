@@ -87,13 +87,13 @@ For more examples, see the [workflow examples](.github/workflows).
 | `max-log-level`  | The maximum log level to allow (verbose, info, warning, error)                                    | false    | info          |
 | `min-log-level`  | The minimum log level to capture (verbose, info, warning, error)                                  | false    | verbose       |
 | `port`           | The port to run the http-server on (set to 3000 if `webapp-url` is localhost and port is not set) | false    |               |
-| `regexp-error`   | Regular expression pattern to filter error logs                                                   | false    |               |
-| `regexp-info`    | Regular expression pattern to filter info logs                                                    | false    |               |
-| `regexp-verbose` | Regular expression pattern to filter verbose logs                                                 | false    |               |
-| `regexp-warning` | Regular expression pattern to filter warning logs                                                 | false    |               |
+| `regexp-error`   | Regular expression pattern to filter matching parts from error logs                               | false    |               |
+| `regexp-info`    | Regular expression pattern to filter matching parts from info logs                                | false    |               |
+| `regexp-verbose` | Regular expression pattern to filter matching parts from verbose logs                             | false    |               |
+| `regexp-warning` | Regular expression pattern to filter matching parts from warning logs                             | false    |               |
 | `show-emoji`     | Whether to show emojis in the output                                                              | false    | true          |
 | `wait-time`      | The wait time before capturing logs (in milliseconds)                                             | false    | 2500          |
-| <a name="webapp-url"></a>`webapp-url` | The URL of the web application                                               | true     |               |
+| <a name="webapp-url"></a>`webapp-url` | The URL of the web application                                                                    | true     |               |
 
 ## Outputs
 | Output    | Description              |

@@ -58,10 +58,10 @@ jobs:
           comment-tag: pass-regexp
           headline: Some messages will be hidden by the regexp
           max-log-level: error
-          regexp-error: 'This is'
-          regexp-info: 'This \D+ workflow'
-          regexp-verbose: 'debug'
-          regexp-warning: 'pass'
+          regexp-error: 'This is' # This is an error in => an error in (trimmed)
+          regexp-info: 'This \D+ workflow' # info and log completely hidden
+          regexp-verbose: 'debug ' # This is a debug message => This is a message
+          regexp-warning: 'pass ' # in the pass workflow => in the workflow
           wait-time: 5
           webapp-url: 'http://localhost'
         env:

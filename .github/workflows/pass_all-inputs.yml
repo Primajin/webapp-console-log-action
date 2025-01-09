@@ -60,10 +60,8 @@ jobs:
           max-log-level: error
           min-log-level: warning
           port: 3001
-          regexp-error: 'This is'
-          regexp-info: 'an info'
-          regexp-verbose: 'debug'
-          regexp-warning: 'pass'
+          regexp-error: 'This is' # This is an error in => an error in (trimmed)
+          regexp-warning: 'pass ' # in the pass workflow => in the workflow
           show-emoji: false
           wait-time: 5
           webapp-url: 'http://localhost'
