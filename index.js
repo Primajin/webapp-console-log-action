@@ -23,10 +23,10 @@ const consoleMessages = new Map([
  * @type {Object.<string, RegExp>}
  */
 const filters = {
-	error: new RegExp(process.env.REGEXP_ERROR || '^$'),
-	info: new RegExp(process.env.REGEXP_INFO || '^$'),
-	verbose: new RegExp(process.env.REGEXP_VERBOSE || '^$'),
-	warning: new RegExp(process.env.REGEXP_WARNING || '^$'),
+	error: new RegExp(process.env.REGEXP_ERROR || '^$', 'g'),
+	info: new RegExp(process.env.REGEXP_INFO || '^$', 'g'),
+	verbose: new RegExp(process.env.REGEXP_VERBOSE || '^$', 'g'),
+	warning: new RegExp(process.env.REGEXP_WARNING || '^$', 'g'),
 };
 
 /**
