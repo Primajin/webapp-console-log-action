@@ -6,7 +6,7 @@
     "type": "module",
     "repository": "https://github.com/Primajin/webapp-console-log-action",
     "author": "Jannis Hell (@Primajin)",
-    "description": "Capture console.log output from a web page",
+    "description": "Capture console.log output from a web page and post it as a comment on a pull request.",
     "scripts": {
         "coverage": "vitest run --coverage",
         "lint": "xo",

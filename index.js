@@ -97,7 +97,7 @@ await page.goto(port ? `${webAppUrl}:${port}` : webAppUrl);
 await page.waitForTimeout(Number.parseInt(waitTime, 10)); // Wait for the specified time
 
 console.log(' ');
-console.log('Console messages:', Object.fromEntries(consoleMessages));
+console.log('Captured messages:', Object.fromEntries(consoleMessages));
 
 // Remove keys with empty arrays
 for (const [key, value] of consoleMessages) {

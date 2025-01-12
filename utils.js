@@ -6,15 +6,6 @@ import process from 'node:process';
  */
 export const logLevels = ['verbose', 'info', 'warning', 'error'];
 
-console.log('Environment Variable:', process.env.REGEXP_WARNING);
-
-try {
-	const regex = new RegExp(process.env.REGEXP_WARNING, 'g');
-	console.log('Regular Expression:', regex);
-} catch (error) {
-	console.error('Error creating regular expression:', error.message);
-}
-
 /**
  * Regular expressions to filter log messages based on their content.
  * @type {Object.<string, RegExp>}
