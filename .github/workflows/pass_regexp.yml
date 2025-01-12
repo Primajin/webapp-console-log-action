@@ -1,4 +1,4 @@
-name: "Positive Test - has localhost but no port"
+name: "Positive Test - regular expression"
 
 on:
   pull_request:
@@ -14,7 +14,7 @@ permissions:
 jobs:
   pass:
     runs-on: ubuntu-latest
-    name: Should pass - has localhost but no port
+    name: Should pass - has regular expression
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -55,10 +55,13 @@ jobs:
         uses: ./
         with:
           artifact-name: index-html
-          comment-tag: console-log3
-          headline: Should pass - has localhost but no port
+          comment-tag: pass-regexp
+          headline: Some messages will be hidden by the regexp
           max-log-level: error
-          min-log-level: warning
+          regexp-error: 'This is' # This is an error in => an error in (trimmed)
+          regexp-info: 'This \D+ workflow' # info and log completely hidden
+          regexp-verbose: 'debug ' # This is a debug message => This is a message
+          regexp-warning: 'pass ' # in the pass workflow => in the workflow
           wait-time: 5
           webapp-url: 'http://localhost'
         env:

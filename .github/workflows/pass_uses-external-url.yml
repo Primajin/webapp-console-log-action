@@ -22,7 +22,7 @@ jobs:
       - name: Use WebApp Console Log Action
         uses: ./
         with:
-          comment-tag: console-log4
+          comment-tag: pass-uses-external-url
           headline: External - Eyesbound.com
           webapp-url: 'https://eyesbound.com'
         env:

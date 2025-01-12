@@ -1,21 +1,26 @@
 {
     "name": "webapp-console-log-action",
     "version": "1.0.0",
-    "main": "capture-console.mjs",
+    "main": "index.js",
     "license": "MIT",
-    "repository": "",
+    "type": "module",
+    "repository": "https://github.com/Primajin/webapp-console-log-action",
     "author": "Jannis Hell (@Primajin)",
-    "description": "Capture console.log output from a web page",
+    "description": "Capture console.log output from a web page and post it as a comment on a pull request.",
     "scripts": {
+        "coverage": "vitest run --coverage",
         "lint": "xo",
         "lint:fix": "xo --fix",
-        "lint:watch": "npx nodemon -x npm run lint:fix --ext js,json"
+        "lint:watch": "npx nodemon -x npm run lint:fix --ext js,json",
+        "test": "vitest"
     },
     "dependencies": {
         "@actions/core": "^1.11.1",
         "playwright": "^1.49.1"
     },
     "devDependencies": {
+        "@vitest/coverage-v8": "^2.1.8",
+        "vitest": "^2.1.8",
         "xo": "^0.60.0"
     }
 }

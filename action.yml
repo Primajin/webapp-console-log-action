@@ -29,14 +29,26 @@ inputs:
   port:
     description: 'The port to run the http-server on'
     required: false
+  regexp-error:
+    description: 'Regular expression pattern to filter error logs'
+    required: false
+  regexp-info:
+    description: 'Regular expression pattern to filter info logs'
+    required: false
+  regexp-verbose:
+    description: 'Regular expression pattern to filter verbose logs'
+    required: false
+  regexp-warning:
+    description: 'Regular expression pattern to filter warning logs'
+    required: false
   show-emoji:
     description: 'Whether to show emojis in the output'
     required: false
-    default: true
+    default: 'true'
   wait-time:
     description: 'The wait time before capturing logs'
     required: false
-    default: 2500
+    default: '2500'
   webapp-url:
     description: 'The URL of the web application'
     required: true
@@ -44,6 +56,7 @@ inputs:
 outputs:
   console:
     description: 'The captured console log'
+    value: ${{ steps.capture-console.outputs.console }}
 
 runs:
   using: 'composite'
@@ -109,13 +122,17 @@ runs:
       working-directory: ${{ env.ACTION_PATH }}
 
     - name: Execute Capture Script
-      run: node capture-console.mjs
+      run: node index.js
       shell: bash
       working-directory: ${{ env.ACTION_PATH }}
       env:
         MAX_LOG_LEVEL: ${{ inputs.max-log-level }}
         MIN_LOG_LEVEL: ${{ inputs.min-log-level }}
         PORT: ${{ env.port }}
+        REGEXP_ERROR: ${{ inputs.regexp-error }}
+        REGEXP_INFO: ${{ inputs.regexp-info }}
+        REGEXP_VERBOSE: ${{ inputs.regexp-verbose }}
+        REGEXP_WARNING: ${{ inputs.regexp-warning }}
         WAIT_TIME: ${{ inputs.wait-time }}
         WEBAPP_URL: ${{ inputs.webapp-url }}
 

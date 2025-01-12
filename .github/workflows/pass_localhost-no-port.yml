@@ -1,0 +1,65 @@
+name: "Positive Test - has localhost but no port"
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - closed
+
+permissions:
+  pull-requests: write
+
+jobs:
+  pass:
+    runs-on: ubuntu-latest
+    name: Should pass - has localhost but no port
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create fake App with console outputs
+        run: |
+          touch index.html
+          
+          cat > index.html << EOF
+          
+          <!DOCTYPE html>
+          <html>
+          <head>
+          <title>New Page</title>
+          </head>
+          <body>
+              <h1>Hello, World!</h1>
+              <script>
+                console.debug('This is a debug message and likely hidden in the pass workflow');
+                console.info('This is an info in the pass workflow');
+                console.log('This is a log in the pass workflow');
+                console.log('This is another log in the pass workflow');
+                console.warn('This is a warning in the pass workflow');
+                console.error('This is an error in the pass workflow');
+              </script>
+          </body>
+          </html>
+          
+          EOF
+
+      - name: Upload index.html
+        uses: actions/upload-artifact@v4
+        with:
+          name: index-html
+          path: index.html
+
+      - name: Use WebApp Console Log Action
+        uses: ./
+        with:
+          artifact-name: index-html
+          comment-tag: pass-localhost-no-port
+          headline: Should pass - has localhost but no port
+          max-log-level: error
+          min-log-level: warning
+          wait-time: 5
+          webapp-url: 'http://localhost'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
