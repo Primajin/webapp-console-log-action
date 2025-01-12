@@ -7,13 +7,6 @@ afterEach(() => {
 	vi.resetModules();
 });
 
-/**
- * Encodes a string to base64.
- * @param {string} str - The string to encode.
- * @returns {string} - The base64 encoded string.
- */
-const encodeBase64 = string_ => Buffer.from(string_).toString('base64');
-
 describe('filterMessage', () => {
 	describe('default', () => {
 		test('verbose', async () => {
@@ -39,25 +32,25 @@ describe('filterMessage', () => {
 
 	describe('remove words', () => {
 		test('verbose', async () => {
-			vi.stubEnv('REGEXP_VERBOSE', encodeBase64('verbose '));
+			vi.stubEnv('REGEXP_VERBOSE', 'verbose ');
 			const {filterMessage} = await import('./utils.js');
 			expect(filterMessage('verbose', 'This is a verbose message')).toBe('This is a message');
 		});
 
 		test('info', async () => {
-			vi.stubEnv('REGEXP_INFO', encodeBase64('info '));
+			vi.stubEnv('REGEXP_INFO', 'info ');
 			const {filterMessage} = await import('./utils.js');
 			expect(filterMessage('info', 'This is a info message')).toBe('This is a message');
 		});
 
 		test('warning', async () => {
-			vi.stubEnv('REGEXP_WARNING', encodeBase64('warning '));
+			vi.stubEnv('REGEXP_WARNING', 'warning ');
 			const {filterMessage} = await import('./utils.js');
 			expect(filterMessage('warning', 'This is a warning message')).toBe('This is a message');
 		});
 
 		test('error', async () => {
-			vi.stubEnv('REGEXP_ERROR', encodeBase64('error '));
+			vi.stubEnv('REGEXP_ERROR', 'error ');
 			const {filterMessage} = await import('./utils.js');
 			expect(filterMessage('error', 'This is a error message')).toBe('This is a message');
 		});
@@ -65,25 +58,25 @@ describe('filterMessage', () => {
 
 	describe('use regexp', () => {
 		test('verbose', async () => {
-			vi.stubEnv('REGEXP_VERBOSE', encodeBase64('is\\D+sa'));
+			vi.stubEnv('REGEXP_VERBOSE', 'is\\D+sa');
 			const {filterMessage} = await import('./utils.js');
 			expect(filterMessage('verbose', 'This is a verbose message')).toBe('Thge');
 		});
 
 		test('info', async () => {
-			vi.stubEnv('REGEXP_INFO', encodeBase64('is\\D+sa'));
+			vi.stubEnv('REGEXP_INFO', 'is\\D+sa');
 			const {filterMessage} = await import('./utils.js');
 			expect(filterMessage('info', 'This is a info message')).toBe('Thge');
 		});
 
 		test('warning', async () => {
-			vi.stubEnv('REGEXP_WARNING', encodeBase64('\\[(?:[^\\]]*242999[^\\]]*|[^\\]]*20bc000ce300[^\\]]*)].+'));
+			vi.stubEnv('REGEXP_WARNING', '\\[.+(?:Automatic fallback to software WebGL has been deprecated|GPU stall due to ReadPixels).*');
 			const {filterMessage} = await import('./utils.js');
 			const warningMessages = [
 				'[GroupMarkerNotSet(crbug.com/242999)!:A0301C00AC2E0000]Automatic fallback to software WebGL has been deprecated. Please use the --enable-unsafe-swiftshader flag to opt in to lower security guarantees for trusted content.',
+				'[.WebGL-0x17fc000e5500]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels',
 				'[.WebGL-0x20bc000ce300]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels',
-				'[.WebGL-0x20bc000ce300]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels',
-				'[.WebGL-0x20bc000ce300]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels',
+				'[.WebGL-0x20bc123ce300]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels',
 				'[.WebGL-0x20bc000ce300]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)',
 			];
 			for (const message of warningMessages) {
@@ -92,7 +85,7 @@ describe('filterMessage', () => {
 		});
 
 		test('error', async () => {
-			vi.stubEnv('REGEXP_ERROR', encodeBase64('Failed \\D+ 404 \\(\\)'));
+			vi.stubEnv('REGEXP_ERROR', 'Failed \\D+ 404 \\(\\)');
 			const {filterMessage} = await import('./utils.js');
 			expect(filterMessage('error', 'Failed to load resource: the server responded with a status of 404 ()')).toBe('');
 		});

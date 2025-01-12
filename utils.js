@@ -1,13 +1,6 @@
 import process from 'node:process';
 
 /**
- * Decodes a base64 encoded string.
- * @param {string} encoded - The base64 encoded string.
- * @returns {string} - The decoded string.
- */
-const decodeBase64 = encoded => Buffer.from(encoded, 'base64').toString('utf8');
-
-/**
  * Array of log levels in order of severity.
  * @type {string[]}
  */
@@ -16,7 +9,7 @@ export const logLevels = ['verbose', 'info', 'warning', 'error'];
 console.log('Environment Variable:', process.env.REGEXP_WARNING);
 
 try {
-	const regex = new RegExp(decodeBase64(process.env.REGEXP_WARNING), 'g');
+	const regex = new RegExp(process.env.REGEXP_WARNING, 'g');
 	console.log('Regular Expression:', regex);
 } catch (error) {
 	console.error('Error creating regular expression:', error.message);
@@ -27,10 +20,10 @@ try {
  * @type {Object.<string, RegExp>}
  */
 const filters = {
-	[logLevels[0]]: new RegExp(decodeBase64(process.env.REGEXP_VERBOSE || 'Xl4='), 'g'),
-	[logLevels[1]]: new RegExp(decodeBase64(process.env.REGEXP_INFO || 'Xl4='), 'g'),
-	[logLevels[2]]: new RegExp(decodeBase64(process.env.REGEXP_WARNING || 'Xl4='), 'g'),
-	[logLevels[3]]: new RegExp(decodeBase64(process.env.REGEXP_ERROR || 'Xl4='), 'g'),
+	[logLevels[0]]: new RegExp(process.env.REGEXP_VERBOSE || '^$', 'g'),
+	[logLevels[1]]: new RegExp(process.env.REGEXP_INFO || '^$', 'g'),
+	[logLevels[2]]: new RegExp(process.env.REGEXP_WARNING || '^$', 'g'),
+	[logLevels[3]]: new RegExp(process.env.REGEXP_ERROR || '^$', 'g'),
 };
 
 /**
