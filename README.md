@@ -79,21 +79,32 @@ jobs:
 For more examples, see the [workflow examples](.github/workflows).
 
 ## Inputs
-| Input            | Description                                                                                       | Required | Default       |
-|------------------|---------------------------------------------------------------------------------------------------|----------|---------------|
-| `artifact-name`  | The name of the artifact to download (required if `webapp-url` points to localhost)               | false    |               |
-| `comment-tag`    | The tag to use for the comment - so that consecutive pushes will update the same comment          | false    | console-log   |
-| `headline`       | The headline for the console logs                                                                 | false    | Console Logs  |
-| `max-log-level`  | The maximum log level to allow (verbose, info, warning, error)                                    | false    | info          |
-| `min-log-level`  | The minimum log level to capture (verbose, info, warning, error)                                  | false    | verbose       |
-| `port`           | The port to run the http-server on (set to 3000 if `webapp-url` is localhost and port is not set) | false    |               |
-| `regexp-error`   | Regular expression pattern to filter matching parts from error logs                               | false    |               |
-| `regexp-info`    | Regular expression pattern to filter matching parts from info logs                                | false    |               |
-| `regexp-verbose` | Regular expression pattern to filter matching parts from verbose logs                             | false    |               |
-| `regexp-warning` | Regular expression pattern to filter matching parts from warning logs                             | false    |               |
-| `show-emoji`     | Whether to show emojis in the output                                                              | false    | true          |
-| `wait-time`      | The wait time before capturing logs (in milliseconds)                                             | false    | 2500          |
-| <a name="webapp-url"></a>`webapp-url` | The URL of the web application                                                                    | true     |               |
+| Input                               | Description                                                                                                                                                        | Required | Default       |
+|-------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|---------------|
+| `artifact-name`                     | The name of the artifact to download (required if `webapp-url` points to localhost)                                                                                | false    |               |
+| `comment-tag`                       | The tag to use for the comment - so that consecutive pushes will update the same comment                                                                           | false    | console-log   |
+| `headline`                          | The headline for the console logs                                                                                                                                  | false    | Console Logs  |
+| `max-log-level`                     | The maximum log level to allow (verbose, info, warning, error)                                                                                                     | false    | info          |
+| `min-log-level`                     | The minimum log level to capture (verbose, info, warning, error)                                                                                                   | false    | verbose       |
+| `port`                              | The port to run the http-server on (set to 3000 if `webapp-url` is localhost and port is not set)                                                                  | false    |               |
+| `regexp-error`                      | Regular expression pattern to <a href="#filter-note" aria-describedby="footnotes-label" role="doc-noteref">filter<sup>1</sup></a> matching parts from error logs   | false    |               |
+| `regexp-info`                       | Regular expression pattern to <a href="#filter-note" aria-describedby="footnotes-label" role="doc-noteref">filter<sup>1</sup></a> matching parts from info logs    | false    |               |
+| `regexp-verbose`                    | Regular expression pattern to <a href="#filter-note" aria-describedby="footnotes-label" role="doc-noteref">filter<sup>1</sup></a> matching parts from verbose logs | false    |               |
+| `regexp-warning`                    | Regular expression pattern to <a href="#filter-note" aria-describedby="footnotes-label" role="doc-noteref">filter<sup>1</sup></a> matching parts from warning logs | false    |               |
+| `show-emoji`                        | Whether to show emojis in the output                                                                                                                               | false    | true          |
+| `wait-time`                         | The wait time before capturing logs (in milliseconds)                                                                                                              | false    | 2500          |
+| <a id="webapp-url"></a>`webapp-url` | The URL of the web application                                                                                                                                     | true     |               |
+
+<footer role="doc-footnote">
+  <h5 id="footnotes-label">Footnotes</h5>
+  <ol>
+    <li id="filter-note">
+      Log messages (or parts of them) that match the regular expression pattern will be replaced with empty string.<br>
+      If everything is replaced with empty string, the log will not be captured.<br>
+      This is useful to filter out parts of the log that are expected or contain sensitive information.
+    </li>
+  </ol>
+</footer>
 
 ## Outputs
 | Output    | Description              |
