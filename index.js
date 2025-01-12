@@ -84,6 +84,7 @@ page.on('console', message => {
 	const logMessage = message.text();
 	if (shouldCapture(logLevel)) {
 		const filteredMessage = filterMessage(logLevel, logMessage);
+		console.log('filteredMessage:', logLevel.toUpperCase(), filteredMessage);
 		if (filteredMessage.length > 0) {
 			consoleMessages.get(logLevel).push(filteredMessage);
 			if (shouldFail(logLevel)) {

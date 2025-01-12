@@ -77,7 +77,7 @@ describe('filterMessage', () => {
 		});
 
 		test('warning', async () => {
-			vi.stubEnv('REGEXP_WARNING', encodeBase64('\\[GroupMarkerNotSet\\(crbug\\.com\\/242999.+|\\[\\.WebGL-\\d+x[0-9a-f]+\\]GL Driver Message \\(OpenGL, Performance, GL_CLOSE_PATH_NV, High\\): GPU stall due to ReadPixels( \\(this message will no longer repeat\\))?'));
+			vi.stubEnv('REGEXP_WARNING', encodeBase64('\\[(?:[^\\]]*242999[^\\]]*|[^\\]]*20bc000ce300[^\\]]*)].+'));
 			const {filterMessage} = await import('./utils.js');
 			const warningMessages = [
 				'[GroupMarkerNotSet(crbug.com/242999)!:A0301C00AC2E0000]Automatic fallback to software WebGL has been deprecated. Please use the --enable-unsafe-swiftshader flag to opt in to lower security guarantees for trusted content.',
