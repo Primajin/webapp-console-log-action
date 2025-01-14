@@ -116,7 +116,7 @@ This project is licensed under the Unlicense license - see the [LICENSE](LICENSE
 
 ## Comment
 
-The comment will look like this:
+The comment will look something like this:
 
 <table>
   <tr>
@@ -124,7 +124,7 @@ The comment will look like this:
   </tr>
   <tr>
     <td><img src="https://avatars.githubusercontent.com/in/15368?s=80&v=4" alt="@github-actions" width="40" height="40" /></td>
-    <td><b>github-actions</b> (bot) commented 5 days ago &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
+    <td><b>github-actions</b> (bot) commented 2 minutes ago &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>
   </tr>
   <tr>
     <td></td>
