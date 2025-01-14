@@ -113,3 +113,42 @@ For more examples, see the [workflow examples](.github/workflows).
 
 ## License
 This project is licensed under the Unlicense license - see the [LICENSE](LICENSE) file for details.
+
+## Comment
+
+The comment will look like this:
+
+<table>
+  <tr>
+    <td><img src="https://avatars.githubusercontent.com/in/15368?s=80&v=4" width="40" height="40" alt="@github-actions" /></td>
+    <td width="100%"><b>github-actions</b> (bot) commented 5 days ago</td>
+  </tr>
+  <tr>
+    <td></td>
+<td>
+
+# Console Logs
+## ❌ Error
+```
+This is an error
+```
+
+## ℹ️ Info
+```
+This is an info
+This is a log
+This is another log
+```
+
+## 💬 Verbose
+```
+This is a debug message
+```
+
+## ⚠️ Warning
+```
+This is a warning
+```
+</td>
+  </tr>
+</table>
