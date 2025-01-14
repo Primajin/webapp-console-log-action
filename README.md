@@ -120,8 +120,8 @@ The comment will look like this:
 
 <table>
   <tr>
-    <td><img src="https://avatars.githubusercontent.com/in/15368?s=80&v=4" width="40" height="40" alt="@github-actions" /></td>
-    <td width="100%"><b>github-actions</b> (bot) commented 5 days ago</td>
+    <td><img src="https://avatars.githubusercontent.com/in/15368?s=80&v=4" alt="@github-actions" width="40" height="40" /></td>
+    <td><b>github-actions</b> (bot) commented 5 days ago</td>
   </tr>
   <tr>
     <td></td>
