@@ -1,0 +1,59 @@
+name: "Positive Test - has no messages"
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - closed
+
+permissions:
+  pull-requests: write
+
+jobs:
+  pass:
+    runs-on: ubuntu-latest
+    name: Should pass - has no messages
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create fake App with console outputs
+        run: |
+          touch index.html
+          
+          cat > index.html << EOF
+          
+          <!DOCTYPE html>
+          <html>
+          <head>
+          <title>New Page</title>
+          </head>
+          <body>
+              <h1>Hello, World!</h1>
+              <script>
+                console.debug('This is a debug message and likely hidden in the pass workflow');
+              </script>
+          </body>
+          </html>
+          
+          EOF
+
+      - name: Upload index.html
+        uses: actions/upload-artifact@v4
+        with:
+          name: index-html
+          path: index.html
+
+      - name: Use WebApp Console Log Action
+        uses: ./
+        with:
+          artifact-name: index-html
+          comment-tag: pass-no-messages
+          headline: Should pass - has no messages
+          min-log-level: warning
+          wait-time: 5
+          webapp-url: 'http://localhost'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
