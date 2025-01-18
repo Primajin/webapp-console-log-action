@@ -150,32 +150,41 @@ runs:
       run: |
         # Create a markdown file and add a main heading
         echo "# ${{ inputs.headline }}" > formatted_console_output.md
-        # Loop through each key in the JSON file
-        for key in $(jq -r 'keys[]' console_output.json); do
-          # Capitalize the first character of the key
-          capitalized_key=$(echo "$key" | awk '{print toupper(substr($0, 1, 1)) tolower(substr($0, 2))}')
-          # Add a subheading for each log level with matching emoji if show-emoji is true
+        # Check if the console_output.json file is empty or contains no logs
+        if [ ! -s console_output.json ] || [ "$(jq -r 'keys | length' console_output.json)" -eq 0 ]; then
           if [ "${{ inputs.show-emoji }}" = "true" ]; then
-            case "$key" in
-              verbose) emoji="💬" ;;
-              info) emoji="ℹ️" ;;
-              warning) emoji="⚠️" ;;
-              error) emoji="❌" ;;
-              *) emoji="" ;;
-            esac
-            echo "## $emoji $capitalized_key" >> formatted_console_output.md
+            echo "✅ No logs were captured" >> formatted_console_output.md
           else
-            echo "## $capitalized_key" >> formatted_console_output.md
+              echo "No logs were captured" >> formatted_console_output.md
           fi
-          # Add a code block for each log message
-          echo '```' >> formatted_console_output.md
-          # Add each log message
-          jq -r --arg key "$key" '.[$key][]' console_output.json >> formatted_console_output.md
-          # Close the code block
-          echo '```' >> formatted_console_output.md
-          # Add an empty line for better readability when editing
-          echo "" >> formatted_console_output.md
-        done
+        else
+          # Loop through each key in the JSON file
+          for key in $(jq -r 'keys[]' console_output.json); do
+            # Capitalize the first character of the key
+            capitalized_key=$(echo "$key" | awk '{print toupper(substr($0, 1, 1)) tolower(substr($0, 2))}')
+            # Add a subheading for each log level with matching emoji if show-emoji is true
+            if [ "${{ inputs.show-emoji }}" = "true" ]; then
+              case "$key" in
+                verbose) emoji="💬" ;;
+                info) emoji="ℹ️" ;;
+                warning) emoji="⚠️" ;;
+                error) emoji="❌" ;;
+                *) emoji="" ;;
+              esac
+              echo "## $emoji $capitalized_key" >> formatted_console_output.md
+            else
+              echo "## $capitalized_key" >> formatted_console_output.md
+            fi
+            # Add a code block for each log message
+            echo '```' >> formatted_console_output.md
+            # Add each log message
+            jq -r --arg key "$key" '.[$key][]' console_output.json >> formatted_console_output.md
+            # Close the code block
+            echo '```' >> formatted_console_output.md
+            # Add an empty line for better readability when editing
+            echo "" >> formatted_console_output.md
+          done
+        fi
       shell: bash
       working-directory: ${{ env.ACTION_PATH }}
 
