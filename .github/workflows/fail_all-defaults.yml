@@ -17,7 +17,7 @@ jobs:
     name: Should fail - has warnings and errors, uses all defaults
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Create fake App with console outputs
         run: |
