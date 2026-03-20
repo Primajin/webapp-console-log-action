@@ -1,5 +1,6 @@
 import {promises as fs} from 'node:fs';
 import {chromium} from 'playwright';
+import {shouldFail} from './utils.js';
 import {
 	describe, test, expect, vi, beforeEach, afterEach,
 } from 'vitest';
@@ -100,12 +101,7 @@ describe('index.js', async () => {
 	});
 
 	test('should set shouldFailAction based on log level', async () => {
-		vi.mock('./utils.js', () => ({
-			filterMessage: vi.fn((level, message) => message),
-			shouldCapture: vi.fn(() => true),
-			shouldFail: vi.fn(level => level === 'error'),
-			logLevels: ['verbose', 'info', 'warning', 'error'],
-		}));
+		vi.mocked(shouldFail).mockImplementation(level => level === 'error');
 
 		page.on.mockImplementation((event, callback) => {
 			if (event === 'console') {
