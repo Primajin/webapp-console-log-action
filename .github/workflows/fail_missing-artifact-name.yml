@@ -17,7 +17,7 @@ jobs:
     name: Should fail early - has localhost but no artifact name
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Use WebApp Console Log Action
         id: webapp_console_log
