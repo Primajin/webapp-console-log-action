@@ -1,7 +1,7 @@
 import {promises as fs} from 'node:fs';
 import process from 'node:process';
 import {chromium} from 'playwright';
-import core from '@actions/core';
+import {exportVariable} from '@actions/core';
 import {
 	filterMessage, shouldCapture, shouldFail, logLevels,
 } from './utils.js';
@@ -113,7 +113,7 @@ await browser.close();
 if (shouldFailAction) {
 	console.log(' ');
 	console.warn('Action should fail due to log level threshold, but will not exit here.');
-	core.exportVariable('SHOULD_FAIL_ACTION', 'true');
+	exportVariable('SHOULD_FAIL_ACTION', 'true');
 }
 
 console.log(' ');
