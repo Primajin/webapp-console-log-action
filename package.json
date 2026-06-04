@@ -19,7 +19,7 @@
         "playwright": "^1.60.0"
     },
     "devDependencies": {
-        "@vitest/coverage-v8": "^4.1.7",
+        "@vitest/coverage-v8": "^4.1.8",
         "vitest": "^4.1.0",
         "xo": "^2.0.2"
     }
