@@ -11,10 +11,10 @@ export const logLevels = ['verbose', 'info', 'warning', 'error'];
  * @type {Object.<string, RegExp>}
  */
 const filters = {
-	[logLevels[0]]: new RegExp(process.env.REGEXP_VERBOSE || '^$', 'g'),
-	[logLevels[1]]: new RegExp(process.env.REGEXP_INFO || '^$', 'g'),
-	[logLevels[2]]: new RegExp(process.env.REGEXP_WARNING || '^$', 'g'),
-	[logLevels[3]]: new RegExp(process.env.REGEXP_ERROR || '^$', 'g'),
+	[logLevels[0]]: new RegExp(process.env.REGEXP_VERBOSE || '^$', 'gv'),
+	[logLevels[1]]: new RegExp(process.env.REGEXP_INFO || '^$', 'gv'),
+	[logLevels[2]]: new RegExp(process.env.REGEXP_WARNING || '^$', 'gv'),
+	[logLevels[3]]: new RegExp(process.env.REGEXP_ERROR || '^$', 'gv'),
 };
 
 /**
