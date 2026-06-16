@@ -41,3 +41,5 @@ export default async function loginAndCapture({page, startCapture}) {
   ]);
 }
 ```
+
+If you use a public demo site for testing, be aware that it may load third-party resources that fail independently of your app. You can filter known-noise messages with `regexp-error` in the workflow that calls the action.

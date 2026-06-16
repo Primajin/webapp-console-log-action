@@ -106,6 +106,7 @@ Then reference it from the workflow:
     max-log-level: error
     pre-script-path: .github/scripts/the-internet-login.js
     pre-script-timeout: 30000
+    regexp-error: '^Failed to load resource: net::ERR_NAME_NOT_RESOLVED$'
     wait-time: 1000
     webapp-url: 'https://the-internet.herokuapp.com/login'
   env:
@@ -114,7 +115,7 @@ Then reference it from the workflow:
     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-The action opens `webapp-url`, runs the pre-script, and starts collecting console output. Call `startCapture()` inside the script if you want to begin collecting before the script ends. See [docs/pre-scripts.md](docs/pre-scripts.md) for the full contract.
+The action opens `webapp-url`, runs the pre-script, and starts collecting console output. Call `startCapture()` inside the script if you want to begin collecting before the script ends. The public demo site above can emit unrelated `ERR_NAME_NOT_RESOLVED` resource errors in CI, so the example filters those out. See [docs/pre-scripts.md](docs/pre-scripts.md) for the full contract.
 
 ## Inputs
 | Input                               | Description                                                                                                                                                        | Required | Default       |

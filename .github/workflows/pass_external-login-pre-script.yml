@@ -27,6 +27,7 @@ jobs:
           max-log-level: error
           pre-script-path: .github/scripts/the-internet-login.js
           pre-script-timeout: 30000
+          regexp-error: '^Failed to load resource: net::ERR_NAME_NOT_RESOLVED$'
           wait-time: 1000
           webapp-url: 'https://the-internet.herokuapp.com/login'
         env:
