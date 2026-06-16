@@ -124,11 +124,12 @@ describe('runPreScript', () => {
 		}
 	});
 
-	test('should resolve relative script paths from GITHUB_WORKSPACE', async () => {
+	test('should execute relative script paths from GITHUB_WORKSPACE', async () => {
 		const directory = await mkdtemp(path.join(os.tmpdir(), 'workspace-'));
 		const filePath = path.join(directory, 'scripts', 'login.mjs');
 		await mkdir(path.dirname(filePath), {recursive: true});
-		await writeFile(filePath, 'export default async () => {};');
+		await writeFile(filePath, 'export default async ({startCapture}) => startCapture();');
+		const startCapture = vi.fn();
 		vi.stubEnv('GITHUB_WORKSPACE', directory);
 		vi.stubEnv('PRE_SCRIPT_PATH', 'scripts/login.mjs');
 
@@ -137,9 +138,10 @@ describe('runPreScript', () => {
 				browser: {},
 				context: {},
 				page: {},
-				startCapture: vi.fn(),
+				startCapture,
 				url: 'https://example.com',
-			})).resolves.toBe(false);
+			})).resolves.toBe(true);
+			expect(startCapture).toHaveBeenCalledTimes(1);
 		} finally {
 			await rm(directory, {force: true, recursive: true});
 		}
