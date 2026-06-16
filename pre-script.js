@@ -39,7 +39,7 @@ export const runPreScript = async ({
 	const preScript = await loadPreScript(preScriptPath);
 	const timeout = getPreScriptTimeout();
 	let captureStarted = false;
-	let timeoutId;
+	let timeoutId = null;
 
 	try {
 		await Promise.race([
@@ -62,7 +62,9 @@ export const runPreScript = async ({
 	} catch (error) {
 		throw new Error(`Failed to execute pre-script "${preScriptPath}": ${error.message}`, {cause: error});
 	} finally {
-		clearTimeout(timeoutId);
+		if (timeoutId) {
+			clearTimeout(timeoutId);
+		}
 	}
 
 	return captureStarted;
