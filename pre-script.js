@@ -28,7 +28,7 @@ export const runPreScript = async ({
 	browser,
 	context,
 	page,
-	startCapture,
+	startCapture: beginCapture,
 	url,
 }) => {
 	const preScriptPath = process.env.PRE_SCRIPT_PATH;
@@ -47,8 +47,8 @@ export const runPreScript = async ({
 				browser,
 				context,
 				page,
-				startCapture: async () => {
-					startCapture();
+				async startCapture() {
+					beginCapture();
 					captureStarted = true;
 				},
 				url,
