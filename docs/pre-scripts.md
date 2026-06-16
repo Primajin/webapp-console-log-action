@@ -39,7 +39,11 @@ export default async function loginAndCapture({page, startCapture}) {
     page.waitForURL('**/secure'),
     page.getByRole('button', {name: 'Login'}).click(),
   ]);
+  await page.getByText('You logged into a secure area!').waitFor();
+  await page.getByRole('link', {name: 'Logout'}).waitFor();
 }
 ```
+
+After the click, wait for a signal that only appears for authenticated users, such as a redirect, success message, account menu, or logout button. In the example above, the script waits for both the secure URL and the logged-in success UI before it returns.
 
 If you use a public demo site for testing, be aware that it may load third-party resources that fail independently of your app. You can filter known-noise messages with `regexp-error` in the workflow that calls the action.

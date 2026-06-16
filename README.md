@@ -94,6 +94,8 @@ export default async function loginAndCapture({page, startCapture}) {
     page.waitForURL('**/secure'),
     page.getByRole('button', {name: 'Login'}).click(),
   ]);
+  await page.getByText('You logged into a secure area!').waitFor();
+  await page.getByRole('link', {name: 'Logout'}).waitFor();
 }
 ```
 
@@ -115,7 +117,7 @@ Then reference it from the workflow:
     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-The action opens `webapp-url`, runs the pre-script, and starts collecting console output. Call `startCapture()` inside the script if you want to begin collecting before the script ends. The public demo site above can emit unrelated `ERR_NAME_NOT_RESOLVED` resource errors in CI, so the example filters those out. See [docs/pre-scripts.md](docs/pre-scripts.md) for the full contract.
+The action opens `webapp-url`, runs the pre-script, and starts collecting console output. Call `startCapture()` inside the script if you want to begin collecting before the script ends. In the example above, the script proves login succeeded by waiting for the secure-area success message and the Logout link after the redirect. The public demo site can emit unrelated `ERR_NAME_NOT_RESOLVED` resource errors in CI, so the workflow filters those out. See [docs/pre-scripts.md](docs/pre-scripts.md) for the full contract.
 
 ## Inputs
 | Input                               | Description                                                                                                                                                        | Required | Default       |

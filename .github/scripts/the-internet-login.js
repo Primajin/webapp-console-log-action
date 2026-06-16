@@ -12,5 +12,7 @@ export default async function loginAndCapture({page, startCapture}) {
 		page.waitForURL('**/secure'),
 		page.getByRole('button', {name: 'Login'}).click(),
 	]);
+	await page.getByText('You logged into a secure area!').waitFor();
+	await page.getByRole('link', {name: 'Logout'}).waitFor();
 	await page.waitForLoadState('networkidle');
 }
