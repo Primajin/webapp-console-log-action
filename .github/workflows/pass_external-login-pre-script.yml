@@ -1,0 +1,35 @@
+name: "Positive Test - external login pre-script"
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - closed
+
+permissions:
+  pull-requests: write
+
+jobs:
+  pass:
+    runs-on: ubuntu-latest
+    name: Should pass - logs in to an external site before capture
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Use WebApp Console Log Action
+        uses: ./
+        with:
+          comment-tag: pass-external-login-pre-script
+          headline: External login example
+          max-log-level: error
+          pre-script-path: .github/scripts/the-internet-login.js
+          pre-script-timeout: 30000
+          wait-time: 1000
+          webapp-url: 'https://the-internet.herokuapp.com/login'
+        env:
+          DEMO_LOGIN_PASSWORD: SuperSecretPassword!
+          DEMO_LOGIN_USERNAME: tomsmith
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

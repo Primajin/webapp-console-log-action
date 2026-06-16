@@ -58,19 +58,19 @@ describe('filterMessage', () => {
 
 	describe('use regexp', () => {
 		test('verbose', async () => {
-			vi.stubEnv('REGEXP_VERBOSE', 'is\\D+sa');
+			vi.stubEnv('REGEXP_VERBOSE', String.raw`is\D+sa`);
 			const {filterMessage} = await import('./utils.js');
 			expect(filterMessage('verbose', 'This is a verbose message')).toBe('Thge');
 		});
 
 		test('info', async () => {
-			vi.stubEnv('REGEXP_INFO', 'is\\D+sa');
+			vi.stubEnv('REGEXP_INFO', String.raw`is\D+sa`);
 			const {filterMessage} = await import('./utils.js');
 			expect(filterMessage('info', 'This is a info message')).toBe('Thge');
 		});
 
 		test('warning', async () => {
-			vi.stubEnv('REGEXP_WARNING', '\\[.+(?:Automatic fallback to software WebGL has been deprecated|GPU stall due to ReadPixels).*');
+			vi.stubEnv('REGEXP_WARNING', String.raw`\[.+(?:Automatic fallback to software WebGL has been deprecated|GPU stall due to ReadPixels).*`);
 			const {filterMessage} = await import('./utils.js');
 			const warningMessages = [
 				'[GroupMarkerNotSet(crbug.com/242999)!:A0301C00AC2E0000]Automatic fallback to software WebGL has been deprecated. Please use the --enable-unsafe-swiftshader flag to opt in to lower security guarantees for trusted content.',
@@ -85,7 +85,7 @@ describe('filterMessage', () => {
 		});
 
 		test('error', async () => {
-			vi.stubEnv('REGEXP_ERROR', 'Failed \\D+ 404 \\(\\)');
+			vi.stubEnv('REGEXP_ERROR', String.raw`Failed \D+ 404 \(\)`);
 			const {filterMessage} = await import('./utils.js');
 			expect(filterMessage('error', 'Failed to load resource: the server responded with a status of 404 ()')).toBe('');
 		});

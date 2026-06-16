@@ -10,6 +10,7 @@ issues arise as early as possible - especially when the pull request was opened 
 ### Use cases
 - Capture console logs from a web application deployed on a server
 - Capture console logs from a web application that was built in a previous workflow
+- Capture console logs from authenticated areas after a login flow
 
 ### Dependencies
 This action uses [http-server](https://www.npmjs.com/package/http-server) to serve the web application (only when passing `localhost` as input, [see details below](#webapp-url)) and [playwright](https://www.npmjs.com/package/playwright) to capture the console logs.
@@ -78,6 +79,43 @@ jobs:
 
 For more examples, see the [workflow examples](.github/workflows).
 
+### Example with a login pre-script
+Create a repo-local script that logs in before the capture window starts:
+
+```js
+import process from 'node:process';
+
+export default async function loginAndCapture({page, startCapture}) {
+  await page.getByLabel('Username').fill(process.env.DEMO_LOGIN_USERNAME);
+  await page.getByLabel('Password').fill(process.env.DEMO_LOGIN_PASSWORD);
+
+  await startCapture();
+  await Promise.all([
+    page.waitForURL('**/secure'),
+    page.getByRole('button', {name: 'Login'}).click(),
+  ]);
+}
+```
+
+Then reference it from the workflow:
+
+```yaml
+- name: Capture Console Logs
+  uses: Primajin/webapp-console-log-action@v1
+  with:
+    max-log-level: error
+    pre-script-path: .github/scripts/the-internet-login.js
+    pre-script-timeout: 30000
+    wait-time: 1000
+    webapp-url: 'https://the-internet.herokuapp.com/login'
+  env:
+    DEMO_LOGIN_PASSWORD: ${{ secrets.DEMO_LOGIN_PASSWORD }}
+    DEMO_LOGIN_USERNAME: ${{ secrets.DEMO_LOGIN_USERNAME }}
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+The action opens `webapp-url`, runs the pre-script, and starts collecting console output. Call `startCapture()` inside the script if you want to begin collecting before the script ends. See [docs/pre-scripts.md](docs/pre-scripts.md) for the full contract.
+
 ## Inputs
 | Input                               | Description                                                                                                                                                        | Required | Default       |
 |-------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|---------------|
@@ -86,6 +124,8 @@ For more examples, see the [workflow examples](.github/workflows).
 | `headline`                          | The headline for the console logs                                                                                                                                  | false    | Console Logs  |
 | `max-log-level`                     | The maximum log level to allow (verbose, info, warning, error)                                                                                                     | false    | info          |
 | `min-log-level`                     | The minimum log level to capture (verbose, info, warning, error)                                                                                                   | false    | verbose       |
+| `pre-script-path`                   | Path to a JavaScript module in `GITHUB_WORKSPACE` that prepares the app before console capture begins                                                              | false    |               |
+| `pre-script-timeout`                | Timeout for the pre-script in milliseconds                                                                                                                         | false    | 30000         |
 | `port`                              | The port to run the http-server on (set to 3000 if `webapp-url` is localhost and port is not set)                                                                  | false    |               |
 | `regexp-error`                      | Regular expression pattern to <a href="#filter-note" aria-describedby="footnotes-label" role="doc-noteref">filter<sup>1</sup></a> matching parts from error logs   | false    |               |
 | `regexp-info`                       | Regular expression pattern to <a href="#filter-note" aria-describedby="footnotes-label" role="doc-noteref">filter<sup>1</sup></a> matching parts from info logs    | false    |               |

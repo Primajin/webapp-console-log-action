@@ -26,6 +26,13 @@ inputs:
     description: 'The minimum log level to capture (verbose, info, warning, error)'
     required: false
     default: 'verbose'
+  pre-script-path:
+    description: 'Path to a JavaScript pre-script that can log in or prepare the app before console capture'
+    required: false
+  pre-script-timeout:
+    description: 'Timeout in milliseconds for the pre-script'
+    required: false
+    default: '30000'
   port:
     description: 'The port to run the http-server on'
     required: false
@@ -129,6 +136,8 @@ runs:
         MAX_LOG_LEVEL: ${{ inputs.max-log-level }}
         MIN_LOG_LEVEL: ${{ inputs.min-log-level }}
         PORT: ${{ env.port }}
+        PRE_SCRIPT_PATH: ${{ inputs.pre-script-path }}
+        PRE_SCRIPT_TIMEOUT: ${{ inputs.pre-script-timeout }}
         REGEXP_ERROR: ${{ inputs.regexp-error }}
         REGEXP_INFO: ${{ inputs.regexp-info }}
         REGEXP_VERBOSE: ${{ inputs.regexp-verbose }}

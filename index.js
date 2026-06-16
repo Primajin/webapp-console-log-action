@@ -2,6 +2,7 @@ import {promises as fs} from 'node:fs';
 import process from 'node:process';
 import {chromium} from 'playwright';
 import {exportVariable} from '@actions/core';
+import {runPreScript} from './pre-script.js';
 import {
 	filterMessage, shouldCapture, shouldFail, logLevels,
 } from './utils.js';
@@ -9,6 +10,7 @@ import {
 // Launches a Chromium browser instance and prepares a new page.
 const browser = await chromium.launch();
 const page = await browser.newPage();
+const context = page.context();
 
 /**
  * Map to store captured console messages categorized by log levels.
@@ -41,6 +43,7 @@ const waitTime = process.env.WAIT_TIME || '5000';
  * @default 'http://localhost'
  */
 const webAppUrl = process.env.WEBAPP_URL || 'http://localhost';
+const captureUrl = port ? `${webAppUrl}:${port}` : webAppUrl;
 
 /**
  * Flag to indicate if the action should fail.
@@ -48,6 +51,7 @@ const webAppUrl = process.env.WEBAPP_URL || 'http://localhost';
  * @default false
  */
 let shouldFailAction = false;
+let shouldCaptureMessages = !process.env.PRE_SCRIPT_PATH;
 
 /**
  * Mapping of console message types to log levels.
@@ -79,6 +83,10 @@ const logLevelMapping = {
  * @param {ConsoleMessage} message - The console message object.
  */
 page.on('console', message => {
+	if (!shouldCaptureMessages) {
+		return;
+	}
+
 	const messageType = message.type();
 	const logLevel = logLevelMapping[messageType] || 'info';
 	const logMessage = message.text();
@@ -93,7 +101,25 @@ page.on('console', message => {
 	}
 });
 
-await page.goto(port ? `${webAppUrl}:${port}` : webAppUrl);
+const startCapture = () => {
+	shouldCaptureMessages = true;
+};
+
+await page.goto(captureUrl);
+
+if (process.env.PRE_SCRIPT_PATH) {
+	const captureStartedByPreScript = await runPreScript({
+		browser,
+		context,
+		page,
+		startCapture,
+		url: captureUrl,
+	});
+	if (!captureStartedByPreScript) {
+		startCapture();
+	}
+}
+
 await page.waitForTimeout(Number.parseInt(waitTime, 10)); // Wait for the specified time
 
 console.log(' ');
