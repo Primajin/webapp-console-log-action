@@ -1,5 +1,9 @@
 import {
-	afterEach, describe, expect, test, vi,
+	afterEach,
+	describe,
+	expect,
+	test,
+	vi,
 } from 'vitest';
 
 afterEach(() => {
