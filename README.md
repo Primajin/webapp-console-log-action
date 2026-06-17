@@ -173,26 +173,26 @@ The comment will look something like this:
     <td></td>
 <td>
 
-# Console Logs
+## Console Logs
 ## ❌ Error
-```
+```text
 This is an error
 ```
 
 ## ℹ️ Info
-```
+```text
 This is an info
 This is a log
 This is another log
 ```
 
 ## 💬 Verbose
-```
+```text
 This is a debug message
 ```
 
 ## ⚠️ Warning
-```
+```text
 This is a warning
 ```
 </td>

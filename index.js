@@ -58,7 +58,7 @@ let shouldCaptureMessages = !process.env.PRE_SCRIPT_PATH;
 
 /**
  Mapping of console message types to log levels.
- @type {Object.<string, string>}
+ @type {{[key: string]: string}}
  */
 const logLevelMapping = {
 	log: 'info',
@@ -123,7 +123,7 @@ if (process.env.PRE_SCRIPT_PATH) {
 	}
 }
 
-await page.waitForTimeout(Number.parseInt(waitTime, 10)); // Wait for the specified time
+await page.waitForTimeout(Number(waitTime)); // Wait for the specified time
 
 console.log(' ');
 console.log('Captured messages:', Object.fromEntries(consoleMessages));

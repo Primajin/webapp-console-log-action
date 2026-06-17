@@ -8,7 +8,7 @@ export const logLevels = ['verbose', 'info', 'warning', 'error'];
 
 /**
  Regular expressions to filter log messages based on their content.
- @type {Object.<string, RegExp>}
+ @type {{[key: string]: RegExp}}
  */
 const filters = {
 	[logLevels[0]]: new RegExp(process.env.REGEXP_VERBOSE || '^$', 'gv'),
