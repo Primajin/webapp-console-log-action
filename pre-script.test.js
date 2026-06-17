@@ -1,13 +1,23 @@
 import {
-	mkdir, mkdtemp, rm, writeFile,
+	mkdir,
+	mkdtemp,
+	rm,
+	writeFile,
 } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {
-	afterEach, describe, expect, test, vi,
+	afterEach,
+	describe,
+	expect,
+	test,
+	vi,
 } from 'vitest';
 import {
-	getPreScriptTimeout, loadPreScript, resolvePreScriptPath, runPreScript,
+	getPreScriptTimeout,
+	loadPreScript,
+	resolvePreScriptPath,
+	runPreScript,
 } from './pre-script.js';
 
 afterEach(() => {

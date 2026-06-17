@@ -4,7 +4,10 @@ import {chromium} from 'playwright';
 import {exportVariable} from '@actions/core';
 import {runPreScript} from './pre-script.js';
 import {
-	filterMessage, shouldCapture, shouldFail, logLevels,
+	filterMessage,
+	shouldCapture,
+	shouldFail,
+	logLevels,
 } from './utils.js';
 
 // Launches a Chromium browser instance and prepares a new page.
@@ -13,8 +16,8 @@ const page = await browser.newPage();
 const context = page.context();
 
 /**
- * Map to store captured console messages categorized by log levels.
- * @type {Map<string, string[]>}
+ Map to store captured console messages categorized by log levels.
+ @type {Map<string, string[]>}
  */
 const consoleMessages = new Map([
 	[logLevels[0], []],
@@ -24,38 +27,38 @@ const consoleMessages = new Map([
 ]);
 
 /**
- * Port to run the web application on.
- * @type {string}
- * @default ''
+ Port to run the web application on.
+ @type {string}
+ @default ''
  */
 const port = process.env.PORT || '';
 
 /**
- * Wait time before capturing logs.
- * @type {string}
- * @default '5000'
+ Wait time before capturing logs.
+ @type {string}
+ @default '5000'
  */
 const waitTime = process.env.WAIT_TIME || '5000';
 
 /**
- * URL of the web application.
- * @type {string}
- * @default 'http://localhost'
+ URL of the web application.
+ @type {string}
+ @default 'http://localhost'
  */
 const webAppUrl = process.env.WEBAPP_URL || 'http://localhost';
 const captureUrl = port ? `${webAppUrl}:${port}` : webAppUrl;
 
 /**
- * Flag to indicate if the action should fail.
- * @type {boolean}
- * @default false
+ Flag to indicate if the action should fail.
+ @type {boolean}
+ @default false
  */
 let shouldFailAction = false;
 let shouldCaptureMessages = !process.env.PRE_SCRIPT_PATH;
 
 /**
- * Mapping of console message types to log levels.
- * @type {Object.<string, string>}
+ Mapping of console message types to log levels.
+ @type {{[key: string]: string}}
  */
 const logLevelMapping = {
 	log: 'info',
@@ -79,8 +82,8 @@ const logLevelMapping = {
 };
 
 /**
- * Event listener for console messages from the page.
- * @param {ConsoleMessage} message - The console message object.
+ Event listener for console messages from the page.
+ @param {ConsoleMessage} message - The console message object.
  */
 page.on('console', message => {
 	if (!shouldCaptureMessages) {
@@ -120,7 +123,7 @@ if (process.env.PRE_SCRIPT_PATH) {
 	}
 }
 
-await page.waitForTimeout(Number.parseInt(waitTime, 10)); // Wait for the specified time
+await page.waitForTimeout(Number(waitTime)); // Wait for the specified time
 
 console.log(' ');
 console.log('Captured messages:', Object.fromEntries(consoleMessages));

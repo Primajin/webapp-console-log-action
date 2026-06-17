@@ -5,7 +5,7 @@ import {pathToFileURL} from 'node:url';
 const defaultPreScriptTimeout = 30_000;
 
 export const getPreScriptTimeout = () => {
-	const parsedTimeout = Number.parseInt(process.env.PRE_SCRIPT_TIMEOUT || '', 10);
+	const parsedTimeout = Number(process.env.PRE_SCRIPT_TIMEOUT || '');
 	return Number.isFinite(parsedTimeout) && parsedTimeout > 0 ? parsedTimeout : defaultPreScriptTimeout;
 };
 

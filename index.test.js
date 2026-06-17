@@ -1,7 +1,12 @@
 import process from 'node:process';
 import {promises as fs} from 'node:fs';
 import {
-	beforeEach, afterEach, describe, expect, test, vi,
+	beforeEach,
+	afterEach,
+	describe,
+	expect,
+	test,
+	vi,
 } from 'vitest';
 import {chromium} from 'playwright';
 import {shouldFail} from './utils.js';
@@ -123,11 +128,11 @@ describe('index.js', () => {
 	test('should handle different environment variables', async () => {
 		vi.stubEnv('PORT', '3000');
 		vi.stubEnv('WAIT_TIME', '1000');
-		vi.stubEnv('WEBAPP_URL', 'http://example.com');
+		vi.stubEnv('WEBAPP_URL', 'https://example.com');
 
 		await import('./index.js');
 
-		expect(page.goto).toHaveBeenCalledWith('http://example.com:3000');
+		expect(page.goto).toHaveBeenCalledWith('https://example.com:3000');
 		expect(page.waitForTimeout).toHaveBeenCalledWith(1000);
 	});
 
