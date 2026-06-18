@@ -10,7 +10,7 @@ updates:
     schedule:
       interval: "daily"
     commit-message:
-      prefix: "chore"
+      prefix: "deps"
     labels:
       - "dependencies"
     groups:
@@ -22,7 +22,7 @@ updates:
     schedule:
       interval: "daily"
     commit-message:
-      prefix: "chore"
+      prefix: "deps"
     labels:
       - "dependencies"
     groups:
