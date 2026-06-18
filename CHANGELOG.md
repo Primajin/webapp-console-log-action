@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.2](https://github.com/Primajin/webapp-console-log-action/compare/v1.6.1...v1.6.2) (2026-06-18)
+
+
+### Bug Fixes
+
+* Align Release Please + Dependabot conventions and normalize release tags for Marketplace ([#47](https://github.com/Primajin/webapp-console-log-action/issues/47)) ([5d4d47e](https://github.com/Primajin/webapp-console-log-action/commit/5d4d47ed1e31616f54461f6e0b9b17c5f526d956))
+* remove unsupported changelog-type from release-please config ([791269c](https://github.com/Primajin/webapp-console-log-action/commit/791269cb62f0f19d965408fe3c1751ee591ac900))
+
 ## [1.6.1](https://github.com/Primajin/webapp-console-log-action/compare/webapp-console-log-action-v1.6.0...webapp-console-log-action-v1.6.1) (2026-06-16)
 
 
