@@ -16,7 +16,6 @@ jobs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
       major: ${{ steps.release.outputs.major }}
-      release_id: ${{ steps.release.outputs.id }}
     steps:
       - uses: googleapis/release-please-action@v5
         id: release
