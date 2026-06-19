@@ -1,6 +1,6 @@
 {
     "name": "webapp-console-log-action",
-    "version": "1.6.3",
+    "version": "1.6.4",
     "main": "index.js",
     "license": "MIT",
     "type": "module",
