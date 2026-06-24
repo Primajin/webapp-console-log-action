@@ -55,6 +55,7 @@ const captureUrl = port ? `${webAppUrl}:${port}` : webAppUrl;
  */
 let shouldFailAction = false;
 let shouldCaptureMessages = !process.env.PRE_SCRIPT_PATH;
+let totalMessagesObserved = 0;
 
 /**
  Mapping of console message types to log levels.
@@ -89,6 +90,8 @@ page.on('console', message => {
 	if (!shouldCaptureMessages) {
 		return;
 	}
+
+	totalMessagesObserved++;
 
 	const messageType = message.type();
 	const logLevel = logLevelMapping[messageType] || 'info';
@@ -136,6 +139,7 @@ for (const [key, value] of consoleMessages) {
 }
 
 await fs.writeFile('console_output.json', JSON.stringify(Object.fromEntries(consoleMessages), null, 2));
+await fs.writeFile('capture_stats.json', JSON.stringify({totalObserved: totalMessagesObserved}, null, 2));
 
 await browser.close();
 

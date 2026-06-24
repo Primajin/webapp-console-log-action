@@ -9,7 +9,7 @@ import {
 	vi,
 } from 'vitest';
 import {chromium} from 'playwright';
-import {shouldFail} from './utils.js';
+import {shouldFail, filterMessage} from './utils.js';
 import {runPreScript} from './pre-script.js';
 
 let consoleListener;
@@ -90,6 +90,7 @@ describe('index.js', () => {
 		expect(page.goto).toHaveBeenCalled();
 		expect(page.waitForTimeout).toHaveBeenCalled();
 		expect(fs.writeFile).toHaveBeenCalledWith('console_output.json', JSON.stringify({info: ['Test message']}, null, 2));
+		expect(fs.writeFile).toHaveBeenCalledWith('capture_stats.json', JSON.stringify({totalObserved: 1}, null, 2));
 	});
 
 	test('should handle different log levels', async () => {
@@ -171,5 +172,17 @@ describe('index.js', () => {
 		await import('./index.js');
 
 		expect(fs.writeFile).toHaveBeenCalledWith('console_output.json', JSON.stringify({info: ['Captured during pre-script']}, null, 2));
+	});
+
+	test('should write totalObserved > 0 even when all messages are filtered out', async () => {
+		vi.mocked(filterMessage).mockReturnValue(''); // Everything filtered out
+		page.goto.mockImplementation(async () => {
+			consoleListener({type: () => 'log', text: () => 'This gets filtered'});
+		});
+
+		await import('./index.js');
+
+		expect(fs.writeFile).toHaveBeenCalledWith('capture_stats.json', JSON.stringify({totalObserved: 1}, null, 2));
+		expect(fs.writeFile).toHaveBeenCalledWith('console_output.json', JSON.stringify({}, null, 2));
 	});
 });
