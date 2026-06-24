@@ -93,14 +93,6 @@ runs:
       uses: actions/setup-node@v6
       with:
         node-version: '22'
-        cache: 'npm'
-
-    - name: Cache dependencies
-      uses: actions/cache@v5
-      with:
-        path: ~/.npm
-        key: npm-${{ hashFiles('package-lock.json') }}
-        restore-keys: npm-
 
     - name: Download artifact
       if: contains(inputs.webapp-url, 'http://localhost')
@@ -115,8 +107,18 @@ runs:
       shell: bash
 
     - name: Set ACTION_PATH environment variable
-      run: echo "ACTION_PATH=${GITHUB_ACTION_PATH}" >> $GITHUB_ENV
+      id: set-action-path
+      run: |
+        echo "ACTION_PATH=${GITHUB_ACTION_PATH}" >> $GITHUB_ENV
+        echo "lockfile-hash=$(sha256sum ${GITHUB_ACTION_PATH}/package-lock.json | cut -c1-16)" >> $GITHUB_OUTPUT
       shell: bash
+
+    - name: Cache action dependencies
+      uses: actions/cache@v5
+      with:
+        path: ${{ env.ACTION_PATH }}/node_modules
+        key: action-deps-${{ steps.set-action-path.outputs.lockfile-hash }}
+        restore-keys: action-deps-
 
     - name: Install dependencies
       run: npm ci
