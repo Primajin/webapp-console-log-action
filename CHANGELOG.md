@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.6](https://github.com/Primajin/webapp-console-log-action/compare/v1.6.5...v1.6.6) (2026-06-24)
+
+
+### Bug Fixes
+
+* isolate action from consumer package manager ([#56](https://github.com/Primajin/webapp-console-log-action/issues/56)) ([046b3f4](https://github.com/Primajin/webapp-console-log-action/commit/046b3f4dcc1ceb7fb9b5933747130568eae1a82b))
+
 ## [1.6.5](https://github.com/Primajin/webapp-console-log-action/compare/v1.6.4...v1.6.5) (2026-06-22)
 
 
