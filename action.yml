@@ -163,10 +163,19 @@ runs:
         echo "# ${{ inputs.headline }}" > formatted_console_output.md
         # Check if the console_output.json file is empty or contains no logs
         if [ ! -s console_output.json ] || [ "$(jq -r 'keys | length' console_output.json)" -eq 0 ]; then
+          total_observed=$(jq -r '.totalObserved' capture_stats.json 2>/dev/null || echo "0")
           if [ "${{ inputs.show-emoji }}" = "true" ]; then
-            echo "✅ No logs were captured" >> formatted_console_output.md
+            if [ "$total_observed" -gt 0 ]; then
+              echo "✅ No unexpected logs were captured" >> formatted_console_output.md
+            else
+              echo "✅ No logs were captured" >> formatted_console_output.md
+            fi
           else
+            if [ "$total_observed" -gt 0 ]; then
+              echo "No unexpected logs were captured" >> formatted_console_output.md
+            else
               echo "No logs were captured" >> formatted_console_output.md
+            fi
           fi
         else
           # Loop through each key in the JSON file
