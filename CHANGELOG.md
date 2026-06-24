@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0](https://github.com/Primajin/webapp-console-log-action/compare/v1.6.6...v1.7.0) (2026-06-24)
+
+
+### Features
+
+* distinguish filtered logs from no logs in empty-output message ([#58](https://github.com/Primajin/webapp-console-log-action/issues/58)) ([f6a450d](https://github.com/Primajin/webapp-console-log-action/commit/f6a450d1d2915102b5c123db810921b24e0ed769))
+
 ## [1.6.6](https://github.com/Primajin/webapp-console-log-action/compare/v1.6.5...v1.6.6) (2026-06-24)
 
 
