@@ -29,6 +29,7 @@ jobs:
           <html>
           <head>
           <title>New Page</title>
+          <link rel="icon" href="data:,">
           </head>
           <body>
               <h1>Hello, World!</h1>
