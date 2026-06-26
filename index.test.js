@@ -174,6 +174,13 @@ describe('index.js', () => {
 		expect(fs.writeFile).toHaveBeenCalledWith('console_output.json', JSON.stringify({info: ['Captured during pre-script']}, null, 2));
 	});
 
+	test('should write totalObserved 0 when there are no messages at all', async () => {
+		await import('./index.js');
+
+		expect(fs.writeFile).toHaveBeenCalledWith('capture_stats.json', JSON.stringify({totalObserved: 0}, null, 2));
+		expect(fs.writeFile).toHaveBeenCalledWith('console_output.json', JSON.stringify({}, null, 2));
+	});
+
 	test('should write totalObserved > 0 even when all messages are filtered out', async () => {
 		vi.mocked(filterMessage).mockReturnValue(''); // Everything filtered out
 		page.goto.mockImplementation(async () => {

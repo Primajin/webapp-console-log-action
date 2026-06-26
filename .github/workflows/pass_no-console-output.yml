@@ -1,0 +1,55 @@
+name: "Positive Test - has no console output"
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - closed
+
+permissions:
+  pull-requests: write
+
+jobs:
+  pass:
+    runs-on: ubuntu-latest
+    name: Should pass - has no console output
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Create fake App with no console outputs
+        run: |
+          touch index.html
+          
+          cat > index.html << EOF
+          
+          <!DOCTYPE html>
+          <html>
+          <head>
+          <title>New Page</title>
+          </head>
+          <body>
+              <h1>Hello, World!</h1>
+          </body>
+          </html>
+          
+          EOF
+
+      - name: Upload index.html
+        uses: actions/upload-artifact@v7
+        with:
+          name: index-html-no-console
+          path: index.html
+
+      - name: Use WebApp Console Log Action
+        uses: ./
+        with:
+          artifact-name: index-html-no-console
+          comment-tag: pass-no-console-output
+          headline: Should pass - has no console output
+          wait-time: 5
+          webapp-url: 'http://localhost'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
