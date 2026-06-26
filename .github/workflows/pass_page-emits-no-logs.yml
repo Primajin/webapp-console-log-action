@@ -1,4 +1,4 @@
-name: "Positive Test - has no messages"
+name: "Positive Test - page emits no logs at all"
 
 on:
   pull_request:
@@ -14,12 +14,12 @@ permissions:
 jobs:
   pass:
     runs-on: ubuntu-latest
-    name: Should pass - has no messages
+    name: Should pass - page emits no logs at all (totalObserved = 0)
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
 
-      - name: Create fake App with console outputs
+      - name: Create fake App with no console outputs
         run: |
           touch index.html
           
@@ -29,12 +29,10 @@ jobs:
           <html>
           <head>
           <title>New Page</title>
+          <link rel="icon" href="data:,">
           </head>
           <body>
               <h1>Hello, World!</h1>
-              <script>
-                console.debug('This is a debug message and likely hidden in the pass workflow');
-              </script>
           </body>
           </html>
           
@@ -43,16 +41,15 @@ jobs:
       - name: Upload index.html
         uses: actions/upload-artifact@v7
         with:
-          name: index-html
+          name: index-html-no-console
           path: index.html
 
       - name: Use WebApp Console Log Action
         uses: ./
         with:
-          artifact-name: index-html
-          comment-tag: pass-no-messages
-          headline: Should pass - has no messages
-          min-log-level: warning
+          artifact-name: index-html-no-console
+          comment-tag: pass-page-emits-no-logs
+          headline: Should pass - page emits no logs at all
           wait-time: 5
           webapp-url: 'http://localhost'
         env:
