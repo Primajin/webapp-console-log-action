@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.0](https://github.com/Primajin/webapp-console-log-action/compare/v1.7.1...v1.8.0) (2026-07-03)
+
+
+### Features
+
+* Validate HTTP status codes before log collection ([#66](https://github.com/Primajin/webapp-console-log-action/issues/66)) ([bc4594a](https://github.com/Primajin/webapp-console-log-action/commit/bc4594ae25b8741e92b049d183d1efe68c5f6fc9))
+
 ## [1.7.1](https://github.com/Primajin/webapp-console-log-action/compare/v1.7.0...v1.7.1) (2026-06-26)
 
 
