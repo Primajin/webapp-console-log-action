@@ -48,10 +48,13 @@ const waitTime = process.env.WAIT_TIME || '5000';
  */
 const webAppUrl = process.env.WEBAPP_URL || 'http://localhost';
 const captureUrl = (() => {
-	if (!port) return webAppUrl;
-	const urlObj = new URL(webAppUrl);
-	urlObj.port = port;
-	return urlObj.href;
+	if (!port) {
+		return webAppUrl;
+	}
+
+	const urlObject = new URL(webAppUrl);
+	urlObject.port = port;
+	return urlObject.href;
 })();
 
 /**

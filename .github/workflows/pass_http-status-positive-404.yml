@@ -36,6 +36,7 @@ jobs:
           artifact-name: empty-app-positive-404
           comment-tag: pass-http-status-positive-404
           headline: Should pass - HTTP 404 is a configured positive status
+          max-log-level: 'error'
           positive-statuses: '200,404'
           webapp-url: 'http://localhost/nonexistent-page.html'
         env:
