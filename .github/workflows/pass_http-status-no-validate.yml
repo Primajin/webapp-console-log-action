@@ -19,10 +19,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v7
 
-      - name: Create empty app directory
-        run: mkdir -p app
+      - name: Create app with placeholder file
+        run: |
+          mkdir -p app
+          touch app/index.html
 
-      - name: Upload empty app
+      - name: Upload app
         uses: actions/upload-artifact@v7
         with:
           name: empty-app-no-validate
