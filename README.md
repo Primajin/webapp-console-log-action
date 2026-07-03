@@ -127,6 +127,8 @@ The action opens `webapp-url`, runs the pre-script, and starts collecting consol
 | `headline`                          | The headline for the console logs                                                                                                                                  | false    | Console Logs  |
 | `max-log-level`                     | The maximum log level to allow (verbose, info, warning, error)                                                                                                     | false    | info          |
 | `min-log-level`                     | The minimum log level to capture (verbose, info, warning, error)                                                                                                   | false    | verbose       |
+| `negative-statuses`                 | Comma-separated list of HTTP status codes that explicitly fail the action (e.g. `"404,500"`). Any code not in `positive-statuses` also fails when validation is on. | false    |               |
+| `positive-statuses`                 | Comma-separated list of HTTP status codes considered successful (e.g. `"200,201"`). Defaults to `200` when not set.                                                | false    |               |
 | `pre-script-path`                   | Path to a JavaScript module in `GITHUB_WORKSPACE` that prepares the app before console capture begins                                                              | false    |               |
 | `pre-script-timeout`                | Timeout for the pre-script in milliseconds                                                                                                                         | false    | 30000         |
 | `port`                              | The port to run the http-server on (set to 3000 if `webapp-url` is localhost and port is not set)                                                                  | false    |               |
@@ -135,8 +137,43 @@ The action opens `webapp-url`, runs the pre-script, and starts collecting consol
 | `regexp-verbose`                    | Regular expression pattern to <a href="#filter-note" aria-describedby="footnotes-label" role="doc-noteref">filter<sup>1</sup></a> matching parts from verbose logs | false    |               |
 | `regexp-warning`                    | Regular expression pattern to <a href="#filter-note" aria-describedby="footnotes-label" role="doc-noteref">filter<sup>1</sup></a> matching parts from warning logs | false    |               |
 | `show-emoji`                        | Whether to show emojis in the output                                                                                                                               | false    | true          |
+| `validate-status`                   | Whether to validate the HTTP response status code before log collection. Set to `false` to disable.                                                                | false    | true          |
 | `wait-time`                         | The wait time before capturing logs (in milliseconds)                                                                                                              | false    | 2500          |
 | <a id="webapp-url"></a>`webapp-url` | The URL of the web application                                                                                                                                     | true     |               |
+
+### HTTP status code validation
+
+By default, the action validates the HTTP response status code before collecting console logs. If the page returns a non-`200` status code, the action fails early with a clear error message instead of reporting a misleading "no logs found" result.
+
+**Precedence rules:**
+
+1. If `validate-status` is `false`, all status codes are accepted and validation is skipped entirely.
+2. If the received status code is in `positive-statuses`, the action continues normally.
+3. If the received status code is in `negative-statuses`, the action fails with a reason referencing the negative set.
+4. If the received status code is not in either set, the action fails with a reason referencing the positive set.
+
+Codes not listed in either set are treated as failures. Supported format: comma-separated integers (e.g. `"200,201,301"`). Codes outside the range 100–599 or non-integer values are silently ignored.
+
+**Examples:**
+
+```yaml
+# Default: expect 200, fail on anything else
+- uses: Primajin/webapp-console-log-action@v1
+  with:
+    webapp-url: 'https://example.com'
+
+# Accept both 200 and 404 as valid responses
+- uses: Primajin/webapp-console-log-action@v1
+  with:
+    positive-statuses: '200,404'
+    webapp-url: 'https://example.com/may-not-exist'
+
+# Disable validation entirely (any status passes)
+- uses: Primajin/webapp-console-log-action@v1
+  with:
+    validate-status: 'false'
+    webapp-url: 'https://example.com'
+```
 
 <footer role="doc-footnote">
   <h5 id="footnotes-label">Footnotes</h5>

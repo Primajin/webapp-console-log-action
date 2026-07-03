@@ -1,0 +1,40 @@
+name: "Positive Test - HTTP 404 passes when validation disabled"
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - closed
+
+permissions:
+  pull-requests: write
+
+jobs:
+  pass:
+    runs-on: ubuntu-latest
+    name: Should pass - HTTP 404 passes when validate-status is false
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Create empty app directory
+        run: mkdir -p app
+
+      - name: Upload empty app
+        uses: actions/upload-artifact@v7
+        with:
+          name: empty-app-no-validate
+          path: app
+
+      - name: Use WebApp Console Log Action
+        uses: ./
+        with:
+          artifact-name: empty-app-no-validate
+          comment-tag: pass-http-status-no-validate
+          headline: Should pass - HTTP 404 ignored when validate-status is false
+          validate-status: 'false'
+          webapp-url: 'http://localhost/nonexistent-page.html'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
