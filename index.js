@@ -47,7 +47,12 @@ const waitTime = process.env.WAIT_TIME || '5000';
  @default 'http://localhost'
  */
 const webAppUrl = process.env.WEBAPP_URL || 'http://localhost';
-const captureUrl = port ? `${webAppUrl}:${port}` : webAppUrl;
+const captureUrl = (() => {
+	if (!port) return webAppUrl;
+	const urlObj = new URL(webAppUrl);
+	urlObj.port = port;
+	return urlObj.href;
+})();
 
 /**
  Flag to indicate if the action should fail.

@@ -138,7 +138,7 @@ describe('index.js', () => {
 
 		await import('./index.js');
 
-		expect(page.goto).toHaveBeenCalledWith('https://example.com:3000');
+		expect(page.goto).toHaveBeenCalledWith('https://example.com:3000/');
 		expect(page.waitForTimeout).toHaveBeenCalledWith(1000);
 	});
 
