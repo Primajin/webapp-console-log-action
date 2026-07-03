@@ -52,6 +52,16 @@ inputs:
     description: 'Whether to show emojis in the output'
     required: false
     default: 'true'
+  validate-status:
+    description: 'Whether to validate the HTTP response status code before log collection'
+    required: false
+    default: 'true'
+  positive-statuses:
+    description: 'Comma-separated list of HTTP status codes considered successful (e.g. "200,201"). Defaults to 200 when not set.'
+    required: false
+  negative-statuses:
+    description: 'Comma-separated list of HTTP status codes that explicitly fail the action (e.g. "404,500"). Any code not in positive-statuses also fails by default.'
+    required: false
   wait-time:
     description: 'The wait time before capturing logs'
     required: false
@@ -137,13 +147,16 @@ runs:
       env:
         MAX_LOG_LEVEL: ${{ inputs.max-log-level }}
         MIN_LOG_LEVEL: ${{ inputs.min-log-level }}
+        NEGATIVE_STATUSES: ${{ inputs.negative-statuses }}
         PORT: ${{ env.port }}
+        POSITIVE_STATUSES: ${{ inputs.positive-statuses }}
         PRE_SCRIPT_PATH: ${{ inputs.pre-script-path }}
         PRE_SCRIPT_TIMEOUT: ${{ inputs.pre-script-timeout }}
         REGEXP_ERROR: ${{ inputs.regexp-error }}
         REGEXP_INFO: ${{ inputs.regexp-info }}
         REGEXP_VERBOSE: ${{ inputs.regexp-verbose }}
         REGEXP_WARNING: ${{ inputs.regexp-warning }}
+        VALIDATE_STATUS: ${{ inputs.validate-status }}
         WAIT_TIME: ${{ inputs.wait-time }}
         WEBAPP_URL: ${{ inputs.webapp-url }}
 
@@ -161,8 +174,15 @@ runs:
       run: |
         # Create a markdown file and add a main heading
         echo "# ${{ inputs.headline }}" > formatted_console_output.md
+        # Check if there is an early-exit reason (e.g. HTTP status validation failure)
+        if [ -n "$SHOULD_FAIL_REASON" ]; then
+          if [ "${{ inputs.show-emoji }}" = "true" ]; then
+            echo "❌ $SHOULD_FAIL_REASON" >> formatted_console_output.md
+          else
+            echo "$SHOULD_FAIL_REASON" >> formatted_console_output.md
+          fi
         # Check if the console_output.json file is empty or contains no logs
-        if [ ! -s console_output.json ] || [ "$(jq -r 'keys | length' console_output.json)" -eq 0 ]; then
+        elif [ ! -s console_output.json ] || [ "$(jq -r 'keys | length' console_output.json)" -eq 0 ]; then
           total_observed=$(jq -r '.totalObserved' capture_stats.json 2>/dev/null || echo "0")
           if [ "${{ inputs.show-emoji }}" = "true" ]; then
             if [ "$total_observed" -gt 0 ]; then
@@ -207,6 +227,8 @@ runs:
         fi
       shell: bash
       working-directory: ${{ env.ACTION_PATH }}
+      env:
+        SHOULD_FAIL_REASON: ${{ env.SHOULD_FAIL_REASON }}
 
     - name: Post Console Output to PR
       if: github.event_name == 'pull_request'
@@ -220,9 +242,14 @@ runs:
     - name: Check if action should fail
       run: |
         if [ "$SHOULD_FAIL_ACTION" = "true" ]; then
-          echo "Action should fail due to log level threshold."
+          if [ -n "$SHOULD_FAIL_REASON" ]; then
+            echo "Action failed: $SHOULD_FAIL_REASON"
+          else
+            echo "Action should fail due to log level threshold."
+          fi
           exit 1
         fi
       shell: bash
       env:
         SHOULD_FAIL_ACTION: ${{ env.SHOULD_FAIL_ACTION }}
+        SHOULD_FAIL_REASON: ${{ env.SHOULD_FAIL_REASON }}

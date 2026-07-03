@@ -139,3 +139,118 @@ describe('shouldFail', () => {
 		expect(shouldFail('error')).toBe(true);
 	});
 });
+
+describe('validateStatusCode', () => {
+	describe('default behavior (validation enabled, positive=[200])', () => {
+		test('should pass for 200', async () => {
+			const {validateStatusCode} = await import('./utils.js');
+			expect(validateStatusCode(200)).toEqual({ok: true, reason: ''});
+		});
+
+		test('should fail for 404', async () => {
+			const {validateStatusCode} = await import('./utils.js');
+			const result = validateStatusCode(404);
+			expect(result.ok).toBe(false);
+			expect(result.reason).toContain('404');
+			expect(result.reason).toContain('200');
+		});
+
+		test('should fail for 500', async () => {
+			const {validateStatusCode} = await import('./utils.js');
+			const result = validateStatusCode(500);
+			expect(result.ok).toBe(false);
+			expect(result.reason).toContain('500');
+		});
+	});
+
+	describe('validation disabled', () => {
+		test('should pass any status code when VALIDATE_STATUS=false', async () => {
+			vi.stubEnv('VALIDATE_STATUS', 'false');
+			const {validateStatusCode} = await import('./utils.js');
+			expect(validateStatusCode(404)).toEqual({ok: true, reason: ''});
+			expect(validateStatusCode(500)).toEqual({ok: true, reason: ''});
+			expect(validateStatusCode(200)).toEqual({ok: true, reason: ''});
+		});
+	});
+
+	describe('custom positive statuses', () => {
+		test('should pass for 404 when configured as positive', async () => {
+			vi.stubEnv('POSITIVE_STATUSES', '404');
+			const {validateStatusCode} = await import('./utils.js');
+			expect(validateStatusCode(404)).toEqual({ok: true, reason: ''});
+		});
+
+		test('should fail for 200 when only 404 is positive', async () => {
+			vi.stubEnv('POSITIVE_STATUSES', '404');
+			const {validateStatusCode} = await import('./utils.js');
+			const result = validateStatusCode(200);
+			expect(result.ok).toBe(false);
+			expect(result.reason).toContain('200');
+			expect(result.reason).toContain('404');
+		});
+
+		test('should pass for any code in a multi-code positive list', async () => {
+			vi.stubEnv('POSITIVE_STATUSES', '200,201,404');
+			const {validateStatusCode} = await import('./utils.js');
+			expect(validateStatusCode(200)).toEqual({ok: true, reason: ''});
+			expect(validateStatusCode(201)).toEqual({ok: true, reason: ''});
+			expect(validateStatusCode(404)).toEqual({ok: true, reason: ''});
+		});
+	});
+
+	describe('custom negative statuses', () => {
+		test('should fail with negative-specific reason when code is in negative set', async () => {
+			vi.stubEnv('POSITIVE_STATUSES', '200');
+			vi.stubEnv('NEGATIVE_STATUSES', '404,500');
+			const {validateStatusCode} = await import('./utils.js');
+			const result404 = validateStatusCode(404);
+			expect(result404.ok).toBe(false);
+			expect(result404.reason).toContain('404');
+			expect(result404.reason).toContain('negative');
+		});
+
+		test('positive codes take precedence over negative codes', async () => {
+			vi.stubEnv('POSITIVE_STATUSES', '200,404');
+			vi.stubEnv('NEGATIVE_STATUSES', '404,500');
+			const {validateStatusCode} = await import('./utils.js');
+			expect(validateStatusCode(404)).toEqual({ok: true, reason: ''});
+		});
+
+		test('unlisted codes still fail even without explicit negative set', async () => {
+			vi.stubEnv('POSITIVE_STATUSES', '200');
+			const {validateStatusCode} = await import('./utils.js');
+			const result = validateStatusCode(302);
+			expect(result.ok).toBe(false);
+		});
+	});
+
+	describe('getPositiveStatusCodes and getNegativeStatusCodes defaults', () => {
+		test('getPositiveStatusCodes defaults to [200]', async () => {
+			const {getPositiveStatusCodes} = await import('./utils.js');
+			expect(getPositiveStatusCodes()).toEqual([200]);
+		});
+
+		test('getNegativeStatusCodes defaults to []', async () => {
+			const {getNegativeStatusCodes} = await import('./utils.js');
+			expect(getNegativeStatusCodes()).toEqual([]);
+		});
+
+		test('getPositiveStatusCodes parses env var', async () => {
+			vi.stubEnv('POSITIVE_STATUSES', '200,201,301');
+			const {getPositiveStatusCodes} = await import('./utils.js');
+			expect(getPositiveStatusCodes()).toEqual([200, 201, 301]);
+		});
+
+		test('getNegativeStatusCodes parses env var', async () => {
+			vi.stubEnv('NEGATIVE_STATUSES', '404,500');
+			const {getNegativeStatusCodes} = await import('./utils.js');
+			expect(getNegativeStatusCodes()).toEqual([404, 500]);
+		});
+
+		test('invalid codes are filtered out', async () => {
+			vi.stubEnv('POSITIVE_STATUSES', '200,abc,999,201');
+			const {getPositiveStatusCodes} = await import('./utils.js');
+			expect(getPositiveStatusCodes()).toEqual([200, 201]);
+		});
+	});
+});

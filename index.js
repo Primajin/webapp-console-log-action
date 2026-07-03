@@ -7,6 +7,7 @@ import {
 	filterMessage,
 	shouldCapture,
 	shouldFail,
+	validateStatusCode,
 	logLevels,
 } from './utils.js';
 
@@ -46,7 +47,15 @@ const waitTime = process.env.WAIT_TIME || '5000';
  @default 'http://localhost'
  */
 const webAppUrl = process.env.WEBAPP_URL || 'http://localhost';
-const captureUrl = port ? `${webAppUrl}:${port}` : webAppUrl;
+const captureUrl = (() => {
+	if (!port) {
+		return webAppUrl;
+	}
+
+	const urlObject = new URL(webAppUrl);
+	urlObject.port = port;
+	return urlObject.href;
+})();
 
 /**
  Flag to indicate if the action should fail.
@@ -111,42 +120,53 @@ const startCapture = () => {
 	shouldCaptureMessages = true;
 };
 
-await page.goto(captureUrl);
+const response = await page.goto(captureUrl);
+const statusCode = response ? response.status() : 0;
+const {ok: statusOk, reason: statusReason} = validateStatusCode(statusCode);
 
-if (process.env.PRE_SCRIPT_PATH) {
-	const captureStartedByPreScript = await runPreScript({
-		browser,
-		context,
-		page,
-		startCapture,
-		url: captureUrl,
-	});
-	if (!captureStartedByPreScript) {
-		startCapture();
+if (statusOk) {
+	if (process.env.PRE_SCRIPT_PATH) {
+		const captureStartedByPreScript = await runPreScript({
+			browser,
+			context,
+			page,
+			startCapture,
+			url: captureUrl,
+		});
+		if (!captureStartedByPreScript) {
+			startCapture();
+		}
 	}
-}
 
-await page.waitForTimeout(Number(waitTime)); // Wait for the specified time
+	await page.waitForTimeout(Number(waitTime)); // Wait for the specified time
 
-console.log(' ');
-console.log('Captured messages:', Object.fromEntries(consoleMessages));
-
-// Remove keys with empty arrays
-for (const [key, value] of consoleMessages) {
-	if (value.length === 0) {
-		consoleMessages.delete(key);
-	}
-}
-
-await fs.writeFile('console_output.json', JSON.stringify(Object.fromEntries(consoleMessages), null, 2));
-await fs.writeFile('capture_stats.json', JSON.stringify({totalObserved: totalMessagesObserved}, null, 2));
-
-await browser.close();
-
-if (shouldFailAction) {
 	console.log(' ');
-	console.warn('Action should fail due to log level threshold, but will not exit here.');
-	exportVariable('SHOULD_FAIL_ACTION', 'true');
-}
+	console.log('Captured messages:', Object.fromEntries(consoleMessages));
 
-console.log(' ');
+	// Remove keys with empty arrays
+	for (const [key, value] of consoleMessages) {
+		if (value.length === 0) {
+			consoleMessages.delete(key);
+		}
+	}
+
+	await fs.writeFile('console_output.json', JSON.stringify(Object.fromEntries(consoleMessages), null, 2));
+	await fs.writeFile('capture_stats.json', JSON.stringify({totalObserved: totalMessagesObserved}, null, 2));
+
+	await browser.close();
+
+	if (shouldFailAction) {
+		console.log(' ');
+		console.warn('Action should fail due to log level threshold, but will not exit here.');
+		exportVariable('SHOULD_FAIL_ACTION', 'true');
+	}
+
+	console.log(' ');
+} else {
+	console.error(`HTTP status validation failed: ${statusReason}`);
+	await fs.writeFile('console_output.json', JSON.stringify({}, null, 2));
+	await fs.writeFile('capture_stats.json', JSON.stringify({totalObserved: 0}, null, 2));
+	await browser.close();
+	exportVariable('SHOULD_FAIL_ACTION', 'true');
+	exportVariable('SHOULD_FAIL_REASON', statusReason);
+}

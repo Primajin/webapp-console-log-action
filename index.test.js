@@ -9,7 +9,7 @@ import {
 	vi,
 } from 'vitest';
 import {chromium} from 'playwright';
-import {shouldFail, filterMessage} from './utils.js';
+import {shouldFail, filterMessage, validateStatusCode} from './utils.js';
 import {runPreScript} from './pre-script.js';
 
 let consoleListener;
@@ -47,6 +47,7 @@ vi.mock('./utils.js', () => ({
 	logLevels: ['verbose', 'info', 'warning', 'error'],
 	shouldCapture: vi.fn(() => true),
 	shouldFail: vi.fn(() => false),
+	validateStatusCode: vi.fn(() => ({ok: true, reason: ''})),
 }));
 
 describe('index.js', () => {
@@ -64,6 +65,10 @@ describe('index.js', () => {
 		vi.mocked(runPreScript).mockResolvedValue(false);
 		vi.mocked(shouldFail).mockReset();
 		vi.mocked(shouldFail).mockReturnValue(false);
+		vi.mocked(validateStatusCode).mockReset();
+		vi.mocked(validateStatusCode).mockReturnValue({ok: true, reason: ''});
+		vi.mocked(filterMessage).mockReset();
+		vi.mocked(filterMessage).mockImplementation((level, message) => message);
 		vi.unstubAllEnvs();
 		vi.resetModules();
 
@@ -133,7 +138,7 @@ describe('index.js', () => {
 
 		await import('./index.js');
 
-		expect(page.goto).toHaveBeenCalledWith('https://example.com:3000');
+		expect(page.goto).toHaveBeenCalledWith('https://example.com:3000/');
 		expect(page.waitForTimeout).toHaveBeenCalledWith(1000);
 	});
 
@@ -191,5 +196,62 @@ describe('index.js', () => {
 
 		expect(fs.writeFile).toHaveBeenCalledWith('capture_stats.json', JSON.stringify({totalObserved: 1}, null, 2));
 		expect(fs.writeFile).toHaveBeenCalledWith('console_output.json', JSON.stringify({}, null, 2));
+	});
+
+	test('should fail early on non-200 HTTP status and write empty output files', async () => {
+		vi.mocked(validateStatusCode).mockReturnValue({
+			ok: false,
+			reason: 'HTTP status 404 is not in the configured positive status codes (200).',
+		});
+
+		await import('./index.js');
+
+		expect(fs.writeFile).toHaveBeenCalledWith('console_output.json', JSON.stringify({}, null, 2));
+		expect(fs.writeFile).toHaveBeenCalledWith('capture_stats.json', JSON.stringify({totalObserved: 0}, null, 2));
+		expect(browser.close).toHaveBeenCalled();
+		expect(process.env.SHOULD_FAIL_ACTION).toBe('true');
+		expect(process.env.SHOULD_FAIL_REASON).toContain('404');
+	});
+
+	test('should not run pre-script or wait when HTTP status check fails', async () => {
+		vi.stubEnv('PRE_SCRIPT_PATH', './login.js');
+		vi.mocked(validateStatusCode).mockReturnValue({
+			ok: false,
+			reason: 'HTTP status 500 is not in the configured positive status codes (200).',
+		});
+
+		await import('./index.js');
+
+		expect(runPreScript).not.toHaveBeenCalled();
+		expect(page.waitForTimeout).not.toHaveBeenCalled();
+	});
+
+	test('should continue normally when HTTP status check passes with custom positive code', async () => {
+		vi.mocked(validateStatusCode).mockReturnValue({ok: true, reason: ''});
+		page.goto.mockImplementation(async () => {
+			consoleListener({type: () => 'log', text: () => 'Page loaded fine'});
+		});
+
+		await import('./index.js');
+
+		expect(fs.writeFile).toHaveBeenCalledWith('console_output.json', JSON.stringify({info: ['Page loaded fine']}, null, 2));
+		expect(browser.close).toHaveBeenCalled();
+	});
+
+	test('should pass the response status to validateStatusCode', async () => {
+		const mockResponse = {status: vi.fn(() => 404)};
+		page.goto.mockResolvedValue(mockResponse);
+
+		await import('./index.js');
+
+		expect(validateStatusCode).toHaveBeenCalledWith(404);
+	});
+
+	test('should call validateStatusCode with 0 when response is null', async () => {
+		page.goto.mockResolvedValue(null);
+
+		await import('./index.js');
+
+		expect(validateStatusCode).toHaveBeenCalledWith(0);
 	});
 });
