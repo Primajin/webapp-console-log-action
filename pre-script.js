@@ -38,7 +38,7 @@ export const runPreScript = async ({
 
 	const preScript = await loadPreScript(preScriptPath);
 	const timeout = getPreScriptTimeout();
-	let captureStarted = false;
+	let isCaptureStarted = false;
 	let timeoutId = null;
 
 	try {
@@ -49,7 +49,7 @@ export const runPreScript = async ({
 				page,
 				async startCapture() {
 					beginCapture();
-					captureStarted = true;
+					isCaptureStarted = true;
 				},
 				url,
 			}),
@@ -67,5 +67,5 @@ export const runPreScript = async ({
 		}
 	}
 
-	return captureStarted;
+	return isCaptureStarted;
 };
