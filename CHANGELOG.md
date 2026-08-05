@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.1](https://github.com/Primajin/webapp-console-log-action/compare/v1.8.0...v1.8.1) (2026-08-05)
+
+
+### Dependencies
+
+* bump actions/github-script from 7 to 9 in the dependencies group ([#69](https://github.com/Primajin/webapp-console-log-action/issues/69)) ([5eab7f9](https://github.com/Primajin/webapp-console-log-action/commit/5eab7f9e2c8048b1ae16a4f15a6af8ab2ec8a297))
+* bump actions/setup-node from 6 to 7 in the dependencies group ([#72](https://github.com/Primajin/webapp-console-log-action/issues/72)) ([e188a55](https://github.com/Primajin/webapp-console-log-action/commit/e188a559edb4907d1a06db8caef803d35a36fdf7))
+* bump playwright from 1.61.1 to 1.62.0 in the dependencies group ([#73](https://github.com/Primajin/webapp-console-log-action/issues/73)) ([495c75f](https://github.com/Primajin/webapp-console-log-action/commit/495c75f75bfeb45f05a3d89e2451a4ed55fcfd32))
+* bump postcss from 8.5.16 to 8.5.25 ([#75](https://github.com/Primajin/webapp-console-log-action/issues/75)) ([5a844f7](https://github.com/Primajin/webapp-console-log-action/commit/5a844f709f42110fb1d581f832d3914c8150f660))
+* bump the dependencies group with 3 updates ([#68](https://github.com/Primajin/webapp-console-log-action/issues/68)) ([ed7d764](https://github.com/Primajin/webapp-console-log-action/commit/ed7d7641239eb1341b0604fc2d8a6364c3f37f23))
+* bump undici from 6.24.1 to 6.27.0 ([#71](https://github.com/Primajin/webapp-console-log-action/issues/71)) ([192b012](https://github.com/Primajin/webapp-console-log-action/commit/192b01235673b6bf8505213c0426047e1019736e))
+* bump undici from 6.27.0 to 6.28.0 ([#74](https://github.com/Primajin/webapp-console-log-action/issues/74)) ([6868da7](https://github.com/Primajin/webapp-console-log-action/commit/6868da7010263a16a794dd6d5e3ad151bd3ff43e))
+
 ## [1.8.0](https://github.com/Primajin/webapp-console-log-action/compare/v1.7.1...v1.8.0) (2026-07-03)
 
 
