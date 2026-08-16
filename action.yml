@@ -1,0 +1,255 @@
+name: 'WebApp Console Log Action'
+description: 'An action to capture and post console logs from a web application'
+author: 'Jannis Hell (@Primajin)'
+
+branding:
+  icon: 'clipboard'
+  color: 'blue'
+
+inputs:
+  artifact-name:
+    description: 'The name of the artifact to download'
+    required: false
+  comment-tag:
+    description: 'The tag to use for the comment - so it can be replaced, you may pass empty string to always post a new comment'
+    required: false
+    default: 'console-log'
+  headline:
+    description: 'The headline for the console logs comment'
+    required: false
+    default: 'Console Logs'
+  max-log-level:
+    description: 'The maximum log level to allow (verbose, info, warning, error). Set to error to disable failing.'
+    required: false
+    default: 'info'
+  min-log-level:
+    description: 'The minimum log level to capture (verbose, info, warning, error)'
+    required: false
+    default: 'verbose'
+  pre-script-path:
+    description: 'Path to a JavaScript pre-script that can log in or prepare the app before console capture'
+    required: false
+  pre-script-timeout:
+    description: 'Timeout in milliseconds for the pre-script'
+    required: false
+    default: '30000'
+  port:
+    description: 'The port to run the http-server on'
+    required: false
+  regexp-error:
+    description: 'Regular expression pattern to filter error logs'
+    required: false
+  regexp-info:
+    description: 'Regular expression pattern to filter info logs'
+    required: false
+  regexp-verbose:
+    description: 'Regular expression pattern to filter verbose logs'
+    required: false
+  regexp-warning:
+    description: 'Regular expression pattern to filter warning logs'
+    required: false
+  show-emoji:
+    description: 'Whether to show emojis in the output'
+    required: false
+    default: 'true'
+  validate-status:
+    description: 'Whether to validate the HTTP response status code before log collection'
+    required: false
+    default: 'true'
+  positive-statuses:
+    description: 'Comma-separated list of HTTP status codes considered successful (e.g. "200,201"). Defaults to 200 when not set.'
+    required: false
+  negative-statuses:
+    description: 'Comma-separated list of HTTP status codes that explicitly fail the action (e.g. "404,500"). Any code not in positive-statuses also fails by default.'
+    required: false
+  wait-time:
+    description: 'The wait time before capturing logs'
+    required: false
+    default: '2500'
+  webapp-url:
+    description: 'The URL of the web application'
+    required: true
+
+outputs:
+  console:
+    description: 'The captured console log'
+    value: ${{ steps.capture-console.outputs.console }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Check artifact name requirement
+      run: |
+        if [[ "${{ inputs.webapp-url }}" == *"http://localhost"* && -z "${{ inputs.artifact-name }}" ]]; then
+          echo "Error: artifact-name is required when webapp-url points to localhost."
+          exit 1
+        fi
+      shell: bash
+
+    - name: Set port to 3000 if webapp-url is localhost and port is not set
+      id: set-port
+      run: |
+        if [[ "${{ inputs.webapp-url }}" == *"http://localhost"* && -z "${{ inputs.port }}" ]]; then
+          echo "port=3000" >> $GITHUB_ENV
+        else
+          echo "port=${{ inputs.port }}" >> $GITHUB_ENV
+        fi
+      shell: bash
+
+    - name: Checkout Code
+      uses: actions/checkout@v7
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v7
+      with:
+        node-version: '22'
+
+    - name: Download artifact
+      if: contains(inputs.webapp-url, 'http://localhost')
+      uses: actions/download-artifact@v8
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: app
+
+    - name: Run http-server in the background
+      if: contains(inputs.webapp-url, 'http://localhost')
+      run: npx http-server app/ -p ${{ env.port }} &
+      shell: bash
+
+    - name: Set ACTION_PATH environment variable
+      id: set-action-path
+      run: |
+        echo "ACTION_PATH=${GITHUB_ACTION_PATH}" >> $GITHUB_ENV
+        echo "lockfile-hash=$(sha256sum ${GITHUB_ACTION_PATH}/package-lock.json | cut -c1-16)" >> $GITHUB_OUTPUT
+      shell: bash
+
+    - name: Cache action dependencies
+      uses: actions/cache@v6
+      with:
+        path: ${{ env.ACTION_PATH }}/node_modules
+        key: action-deps-${{ steps.set-action-path.outputs.lockfile-hash }}
+        restore-keys: action-deps-
+
+    - name: Install dependencies
+      run: npm ci
+      shell: bash
+      working-directory: ${{ env.ACTION_PATH }}
+
+    - name: Setup Chromium
+      run: npx playwright install chromium
+      shell: bash
+      working-directory: ${{ env.ACTION_PATH }}
+
+    - name: Execute Capture Script
+      run: node index.js
+      shell: bash
+      working-directory: ${{ env.ACTION_PATH }}
+      env:
+        MAX_LOG_LEVEL: ${{ inputs.max-log-level }}
+        MIN_LOG_LEVEL: ${{ inputs.min-log-level }}
+        NEGATIVE_STATUSES: ${{ inputs.negative-statuses }}
+        PORT: ${{ env.port }}
+        POSITIVE_STATUSES: ${{ inputs.positive-statuses }}
+        PRE_SCRIPT_PATH: ${{ inputs.pre-script-path }}
+        PRE_SCRIPT_TIMEOUT: ${{ inputs.pre-script-timeout }}
+        REGEXP_ERROR: ${{ inputs.regexp-error }}
+        REGEXP_INFO: ${{ inputs.regexp-info }}
+        REGEXP_VERBOSE: ${{ inputs.regexp-verbose }}
+        REGEXP_WARNING: ${{ inputs.regexp-warning }}
+        VALIDATE_STATUS: ${{ inputs.validate-status }}
+        WAIT_TIME: ${{ inputs.wait-time }}
+        WEBAPP_URL: ${{ inputs.webapp-url }}
+
+    - name: Set Output
+      id: capture-console
+      run: |
+        echo 'console<<EOF' >> $GITHUB_OUTPUT
+        jq -c . console_output.json >> $GITHUB_OUTPUT
+        echo 'EOF' >> $GITHUB_OUTPUT
+      shell: bash
+      working-directory: ${{ env.ACTION_PATH }}
+
+    - name: Format Console Output  # Step to format the console output into GitHub Flavored Markdown
+      id: format_console_output
+      run: |
+        # Create a markdown file and add a main heading
+        echo "# ${{ inputs.headline }}" > formatted_console_output.md
+        # Check if there is an early-exit reason (e.g. HTTP status validation failure)
+        if [ -n "$SHOULD_FAIL_REASON" ]; then
+          if [ "${{ inputs.show-emoji }}" = "true" ]; then
+            echo "❌ $SHOULD_FAIL_REASON" >> formatted_console_output.md
+          else
+            echo "$SHOULD_FAIL_REASON" >> formatted_console_output.md
+          fi
+        # Check if the console_output.json file is empty or contains no logs
+        elif [ ! -s console_output.json ] || [ "$(jq -r 'keys | length' console_output.json)" -eq 0 ]; then
+          total_observed=$(jq -r '.totalObserved' capture_stats.json 2>/dev/null || echo "0")
+          if [ "${{ inputs.show-emoji }}" = "true" ]; then
+            if [ "$total_observed" -gt 0 ]; then
+              echo "✅ No unexpected logs were captured" >> formatted_console_output.md
+            else
+              echo "✅ No logs were captured" >> formatted_console_output.md
+            fi
+          else
+            if [ "$total_observed" -gt 0 ]; then
+              echo "No unexpected logs were captured" >> formatted_console_output.md
+            else
+              echo "No logs were captured" >> formatted_console_output.md
+            fi
+          fi
+        else
+          # Loop through each key in the JSON file
+          for key in $(jq -r 'keys[]' console_output.json); do
+            # Capitalize the first character of the key
+            capitalized_key=$(echo "$key" | awk '{print toupper(substr($0, 1, 1)) tolower(substr($0, 2))}')
+            # Add a subheading for each log level with matching emoji if show-emoji is true
+            if [ "${{ inputs.show-emoji }}" = "true" ]; then
+              case "$key" in
+                verbose) emoji="💬" ;;
+                info) emoji="ℹ️" ;;
+                warning) emoji="⚠️" ;;
+                error) emoji="❌" ;;
+                *) emoji="" ;;
+              esac
+              echo "## $emoji $capitalized_key" >> formatted_console_output.md
+            else
+              echo "## $capitalized_key" >> formatted_console_output.md
+            fi
+            # Add a code block for each log message
+            echo '```' >> formatted_console_output.md
+            # Add each log message
+            jq -r --arg key "$key" '.[$key][]' console_output.json >> formatted_console_output.md
+            # Close the code block
+            echo '```' >> formatted_console_output.md
+            # Add an empty line for better readability when editing
+            echo "" >> formatted_console_output.md
+          done
+        fi
+      shell: bash
+      working-directory: ${{ env.ACTION_PATH }}
+      env:
+        SHOULD_FAIL_REASON: ${{ env.SHOULD_FAIL_REASON }}
+
+    - name: Post Console Output to PR
+      if: github.event_name == 'pull_request'
+      uses: thollander/actions-comment-pull-request@v3
+      with:
+        comment-tag: ${{ inputs.comment-tag }}
+        file-path: ${{ env.ACTION_PATH }}/formatted_console_output.md
+      env:
+        GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }}
+
+    - name: Check if action should fail
+      run: |
+        if [ "$SHOULD_FAIL_ACTION" = "true" ]; then
+          if [ -n "$SHOULD_FAIL_REASON" ]; then
+            echo "Action failed: $SHOULD_FAIL_REASON"
+          else
+            echo "Action should fail due to log level threshold."
+          fi
+          exit 1
+        fi
+      shell: bash
+      env:
+        SHOULD_FAIL_ACTION: ${{ env.SHOULD_FAIL_ACTION }}
+        SHOULD_FAIL_REASON: ${{ env.SHOULD_FAIL_REASON }}
