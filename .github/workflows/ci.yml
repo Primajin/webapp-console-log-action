@@ -1,0 +1,758 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - edited
+      - closed
+
+# Least privilege by default; each job widens as needed.
+permissions: {}
+
+jobs:
+  # ---- From test.yml ----
+  lint:
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.action != 'edited')
+    runs-on: ubuntu-latest
+    name: Lint the code.
+    permissions:
+      contents: read
+    env:
+      NODE_VERSION: '24'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Cache dependencies
+        uses: actions/cache@v6
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            npm-${{ runner.os }}-${{ env.NODE_VERSION }}-
+            npm-${{ runner.os }}-
+      - name: Clean install environment
+        run: |
+          rm -rf node_modules
+          npm cache clean --force
+      - name: Install dependencies
+        run: npm ci
+      - name: Run lint
+        run: npm run lint
+
+  test:
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed' && github.event.action != 'edited')
+    runs-on: ubuntu-latest
+    name: Make sure the unit tests pass.
+    permissions:
+      contents: read
+    env:
+      NODE_VERSION: '24'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Cache dependencies
+        uses: actions/cache@v6
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            npm-${{ runner.os }}-${{ env.NODE_VERSION }}-
+            npm-${{ runner.os }}-
+      - name: Clean install environment
+        run: |
+          rm -rf node_modules
+          npm cache clean --force
+      - name: Install dependencies
+        run: npm ci
+      - name: Run coverage
+        run: npm run coverage
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v7
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  # ---- From lint-pr-title.yml ----
+  sync-pr-title-with-commits:
+    if: github.event_name == 'pull_request' && github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    name: Promote PR title bump level to match highest commit bump level
+    steps:
+      - uses: actions/github-script@v9
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const PR_NUMBER = context.payload.pull_request.number;
+            const { owner, repo } = context.repo;
+
+            const PATCH = 0;
+            const MINOR = 1;
+            const MAJOR = 2;
+
+            const MINOR_TYPES = new Set(['feat']);
+
+            function bumpLevelFromMessage(message) {
+              const lines = message.split('\n');
+              const firstLine = lines[0];
+
+              if (/^[a-z]+(?:\([^)]+\))?!:/i.test(firstLine)) return MAJOR;
+
+              if (lines.some(line => /^BREAKING[ -]CHANGE:/i.test(line.trim()))) return MAJOR;
+
+              const match = firstLine.match(/^([a-z]+)(?:\([^)]+\))?:/i);
+
+              if (match && MINOR_TYPES.has(match[1].toLowerCase())) return MINOR;
+
+              return PATCH;
+            }
+
+            const commits = await github.paginate(github.rest.pulls.listCommits, {
+              owner,
+              repo,
+              pull_number: PR_NUMBER,
+            });
+
+            let maxBump = PATCH;
+
+            for (const { commit } of commits) {
+              const bump = bumpLevelFromMessage(commit.message);
+
+              if (bump > maxBump) maxBump = bump;
+              if (maxBump === MAJOR) break;
+            }
+
+            const currentTitle = context.payload.pull_request.title;
+            const titleMatch = currentTitle.match(/^([a-z]+)(\([^)]+\))?(!)?: (.+)$/i);
+
+            if (!titleMatch) {
+              core.warning(`PR title "${currentTitle}" does not follow Conventional Commits format — skipping sync`);
+              return;
+            }
+
+            const [, type, scope, bang, subject] = titleMatch;
+            const scopePart = scope || '';
+            const currentBump = bang ? MAJOR : (MINOR_TYPES.has(type.toLowerCase()) ? MINOR : PATCH);
+
+            if (maxBump <= currentBump) {
+              core.info(`No title update needed (title bump: ${currentBump}, max commit bump: ${maxBump})`);
+              return;
+            }
+
+            const newType = maxBump === MINOR ? 'feat' : type;
+            const newBang = maxBump >= MAJOR ? '!' : '';
+
+            const newTitle = `${newType}${scopePart}${newBang}: ${subject}`;
+
+            core.notice(`Updating PR title from "${currentTitle}" to "${newTitle}"`);
+
+            await github.rest.pulls.update({
+              owner,
+              repo,
+              pull_number: PR_NUMBER,
+              title: newTitle,
+            });
+
+  lint-pr-title:
+    runs-on: ubuntu-latest
+    needs: sync-pr-title-with-commits
+    if: always() && github.event_name == 'pull_request' && github.event.action != 'closed'
+    permissions:
+      pull-requests: read
+    name: Validate PR title follows Conventional Commits
+    steps:
+      - uses: amannn/action-semantic-pull-request@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            docs
+            style
+            refactor
+            perf
+            test
+            build
+            ci
+            chore
+            revert
+            deps
+          requireScope: false
+
+  # ---- From fail_all-defaults.yml ----
+  fail-all-defaults:
+    if: github.event_name == 'pull_request' && github.event.action != 'edited'
+    runs-on: ubuntu-latest
+    name: Should fail - has warnings and errors, uses all defaults
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Create fake App with console outputs
+        run: |
+          touch index.html
+
+          cat > index.html << EOF
+
+          <!DOCTYPE html>
+          <html>
+          <head>
+          <title>New Page</title>
+          </head>
+          <body>
+              <h1>Hello, World!</h1>
+              <script>
+                console.debug('This is a debug message and likely hidden in the fail workflow');
+                console.info('This is an info in the fail workflow');
+                console.log('This is a log in the fail workflow');
+                console.log('This is another log in the fail workflow');
+                console.warn('This is a warning in the fail workflow');
+                console.error('This is an error in the fail workflow');
+              </script>
+          </body>
+          </html>
+
+          EOF
+
+      - name: Upload index.html
+        uses: actions/upload-artifact@v7
+        with:
+          name: index-html
+          path: index.html
+
+      - name: Use WebApp Console Log Action
+        id: webapp_console_log
+        uses: ./
+        with:
+          artifact-name: index-html
+          webapp-url: 'http://localhost'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: Check previous step result and set job result
+        if: always()
+        run: |
+          if [ "${{ steps.webapp_console_log.outcome }}" == "failure" ]; then
+            echo "Previous step failed as expected, marking job as success"
+            exit 0
+          else
+            echo "Previous step did not fail, failing the job"
+            exit 1
+          fi
+
+  # ---- From fail_http-status-404.yml ----
+  fail-http-status-404:
+    if: github.event_name == 'pull_request' && github.event.action != 'edited'
+    runs-on: ubuntu-latest
+    name: Should fail - HTTP 404 fails by default (validate-status enabled)
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Create app with placeholder file
+        run: |
+          mkdir -p app
+          touch app/index.html
+
+      - name: Upload app
+        uses: actions/upload-artifact@v7
+        with:
+          name: empty-app-404
+          path: app
+
+      - name: Use WebApp Console Log Action
+        id: webapp_console_log
+        uses: ./
+        with:
+          artifact-name: empty-app-404
+          comment-tag: fail-http-status-404
+          headline: Should fail - HTTP 404 fails by default
+          webapp-url: 'http://localhost/nonexistent-page.html'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: Check previous step result and set job result
+        if: always()
+        run: |
+          if [ "${{ steps.webapp_console_log.outcome }}" == "failure" ]; then
+            echo "Previous step failed as expected, marking job as success"
+            exit 0
+          else
+            echo "Previous step did not fail, failing the job"
+            exit 1
+          fi
+
+  # ---- From fail_missing-artifact-name.yml ----
+  fail-missing-artifact-name:
+    if: github.event_name == 'pull_request' && github.event.action != 'edited'
+    runs-on: ubuntu-latest
+    name: Should fail early - has localhost but no artifact name
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Use WebApp Console Log Action
+        id: webapp_console_log
+        uses: ./
+        with:
+          webapp-url: 'http://localhost'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: Check previous step result and set job result
+        if: always()
+        run: |
+          if [ "${{ steps.webapp_console_log.outcome }}" == "failure" ]; then
+            echo "Previous step failed as expected, marking job as success"
+            exit 0
+          else
+            echo "Previous step did not fail, failing the job"
+            exit 1
+          fi
+
+  # ---- From pass_all-inputs.yml ----
+  pass-all-inputs:
+    if: github.event_name == 'pull_request' && github.event.action != 'edited'
+    runs-on: ubuntu-latest
+    name: Should pass - has all parameters set
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Create fake App with console outputs
+        run: |
+          touch index.html
+
+          cat > index.html << EOF
+
+          <!DOCTYPE html>
+          <html>
+          <head>
+          <title>New Page</title>
+          </head>
+          <body>
+              <h1>Hello, World!</h1>
+              <script>
+                console.debug('This is a debug message and likely hidden in the pass workflow');
+                console.info('This is an info in the pass workflow');
+                console.log('This is a log in the pass workflow');
+                console.log('This is another log in the pass workflow');
+                console.warn('This is a warning in the pass workflow');
+                console.error('This is an error in the pass workflow');
+              </script>
+          </body>
+          </html>
+
+          EOF
+
+      - name: Upload index.html
+        uses: actions/upload-artifact@v7
+        with:
+          name: index-html
+          path: index.html
+
+      - name: Use WebApp Console Log Action
+        uses: ./
+        with:
+          artifact-name: index-html
+          comment-tag: pass-all-inputs
+          headline: No emojis, min log level warning, max log level error
+          max-log-level: error
+          min-log-level: warning
+          port: 3001
+          regexp-error: 'This is' # This is an error in => an error in (trimmed)
+          regexp-warning: 'pass ' # in the pass workflow => in the workflow
+          show-emoji: false
+          wait-time: 5
+          webapp-url: 'http://localhost'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ---- From pass_external-login-pre-script.yml ----
+  pass-external-login-pre-script:
+    if: github.event_name == 'pull_request' && github.event.action != 'edited'
+    runs-on: ubuntu-latest
+    name: Should pass - logs in to an external site before capture
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Use WebApp Console Log Action
+        uses: ./
+        with:
+          comment-tag: pass-external-login-pre-script
+          headline: External login example
+          max-log-level: error
+          pre-script-path: .github/scripts/the-internet-login.js
+          pre-script-timeout: 30000
+          regexp-error: '^Failed to load resource: net::ERR_NAME_NOT_RESOLVED$'
+          wait-time: 1000
+          webapp-url: 'https://the-internet.herokuapp.com/login'
+        env:
+          DEMO_LOGIN_PASSWORD: SuperSecretPassword!
+          DEMO_LOGIN_USERNAME: tomsmith
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ---- From pass_http-status-no-validate.yml ----
+  pass-http-status-no-validate:
+    if: github.event_name == 'pull_request' && github.event.action != 'edited'
+    runs-on: ubuntu-latest
+    name: Should pass - HTTP 404 passes when validate-status is false
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Create app with placeholder file
+        run: |
+          mkdir -p app
+          touch app/index.html
+
+      - name: Upload app
+        uses: actions/upload-artifact@v7
+        with:
+          name: empty-app-no-validate
+          path: app
+
+      - name: Use WebApp Console Log Action
+        uses: ./
+        with:
+          artifact-name: empty-app-no-validate
+          comment-tag: pass-http-status-no-validate
+          headline: Should pass - HTTP 404 ignored when validate-status is false
+          max-log-level: 'error'
+          validate-status: 'false'
+          webapp-url: 'http://localhost/nonexistent-page.html'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ---- From pass_http-status-positive-404.yml ----
+  pass-http-status-positive-404:
+    if: github.event_name == 'pull_request' && github.event.action != 'edited'
+    runs-on: ubuntu-latest
+    name: Should pass - HTTP 404 is an expected positive status code
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Create app with placeholder file
+        run: |
+          mkdir -p app
+          touch app/index.html
+
+      - name: Upload app
+        uses: actions/upload-artifact@v7
+        with:
+          name: empty-app-positive-404
+          path: app
+
+      - name: Use WebApp Console Log Action
+        uses: ./
+        with:
+          artifact-name: empty-app-positive-404
+          comment-tag: pass-http-status-positive-404
+          headline: Should pass - HTTP 404 is a configured positive status
+          max-log-level: 'error'
+          positive-statuses: '200,404'
+          webapp-url: 'http://localhost/nonexistent-page.html'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ---- From pass_localhost-no-port.yml ----
+  pass-localhost-no-port:
+    if: github.event_name == 'pull_request' && github.event.action != 'edited'
+    runs-on: ubuntu-latest
+    name: Should pass - has localhost but no port
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Create fake App with console outputs
+        run: |
+          touch index.html
+
+          cat > index.html << EOF
+
+          <!DOCTYPE html>
+          <html>
+          <head>
+          <title>New Page</title>
+          </head>
+          <body>
+              <h1>Hello, World!</h1>
+              <script>
+                console.debug('This is a debug message and likely hidden in the pass workflow');
+                console.info('This is an info in the pass workflow');
+                console.log('This is a log in the pass workflow');
+                console.log('This is another log in the pass workflow');
+                console.warn('This is a warning in the pass workflow');
+                console.error('This is an error in the pass workflow');
+              </script>
+          </body>
+          </html>
+
+          EOF
+
+      - name: Upload index.html
+        uses: actions/upload-artifact@v7
+        with:
+          name: index-html
+          path: index.html
+
+      - name: Use WebApp Console Log Action
+        uses: ./
+        with:
+          artifact-name: index-html
+          comment-tag: pass-localhost-no-port
+          headline: Should pass - has localhost but no port
+          max-log-level: error
+          min-log-level: warning
+          wait-time: 5
+          webapp-url: 'http://localhost'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ---- From pass_logs-below-threshold.yml ----
+  pass-logs-below-threshold:
+    if: github.event_name == 'pull_request' && github.event.action != 'edited'
+    runs-on: ubuntu-latest
+    name: Should pass - page has logs but all below min-log-level threshold
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Create fake App with console outputs below threshold
+        run: |
+          touch index.html
+
+          cat > index.html << EOF
+
+          <!DOCTYPE html>
+          <html>
+          <head>
+          <title>New Page</title>
+          </head>
+          <body>
+              <h1>Hello, World!</h1>
+              <script>
+                console.debug('This is a debug message and likely hidden in the pass workflow');
+              </script>
+          </body>
+          </html>
+
+          EOF
+
+      - name: Upload index.html
+        uses: actions/upload-artifact@v7
+        with:
+          name: index-html
+          path: index.html
+
+      - name: Use WebApp Console Log Action
+        uses: ./
+        with:
+          artifact-name: index-html
+          comment-tag: pass-logs-below-threshold
+          headline: Should pass - all logs below min-log-level threshold
+          min-log-level: warning
+          wait-time: 5
+          webapp-url: 'http://localhost'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ---- From pass_page-emits-no-logs.yml ----
+  pass-page-emits-no-logs:
+    if: github.event_name == 'pull_request' && github.event.action != 'edited'
+    runs-on: ubuntu-latest
+    name: Should pass - page emits no logs at all (totalObserved = 0)
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Create fake App with no console outputs
+        run: |
+          touch index.html
+
+          cat > index.html << EOF
+
+          <!DOCTYPE html>
+          <html>
+          <head>
+          <title>New Page</title>
+          <link rel="icon" href="data:,">
+          </head>
+          <body>
+              <h1>Hello, World!</h1>
+          </body>
+          </html>
+
+          EOF
+
+      - name: Upload index.html
+        uses: actions/upload-artifact@v7
+        with:
+          name: index-html-no-console
+          path: index.html
+
+      - name: Use WebApp Console Log Action
+        uses: ./
+        with:
+          artifact-name: index-html-no-console
+          comment-tag: pass-page-emits-no-logs
+          headline: Should pass - page emits no logs at all
+          wait-time: 5
+          webapp-url: 'http://localhost'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ---- From pass_regexp.yml ----
+  pass-regexp:
+    if: github.event_name == 'pull_request' && github.event.action != 'edited'
+    runs-on: ubuntu-latest
+    name: Should pass - has regular expression
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Create fake App with console outputs
+        run: |
+          touch index.html
+
+          cat > index.html << EOF
+
+          <!DOCTYPE html>
+          <html>
+          <head>
+          <title>New Page</title>
+          </head>
+          <body>
+              <h1>Hello, World!</h1>
+              <script>
+                console.debug('This is a debug message and likely hidden in the pass workflow');
+                console.info('This is an info in the pass workflow');
+                console.log('This is a log in the pass workflow');
+                console.log('This is another log in the pass workflow');
+                console.warn('This is a warning in the pass workflow');
+                console.error('This is an error in the pass workflow');
+              </script>
+          </body>
+          </html>
+
+          EOF
+
+      - name: Upload index.html
+        uses: actions/upload-artifact@v7
+        with:
+          name: index-html
+          path: index.html
+
+      - name: Use WebApp Console Log Action
+        uses: ./
+        with:
+          artifact-name: index-html
+          comment-tag: pass-regexp
+          headline: Some messages will be hidden by the regexp
+          max-log-level: error
+          regexp-error: 'This is' # This is an error in => an error in (trimmed)
+          regexp-info: 'This \D+ workflow' # info and log completely hidden
+          regexp-verbose: 'debug ' # This is a debug message => This is a message
+          regexp-warning: 'pass ' # in the pass workflow => in the workflow
+          wait-time: 5
+          webapp-url: 'http://localhost'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ---- From pass_uses-external-url.yml ----
+  pass-uses-external-url:
+    if: github.event_name == 'pull_request' && github.event.action != 'edited'
+    runs-on: ubuntu-latest
+    name: Should pass - uses external url
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Use WebApp Console Log Action
+        uses: ./
+        with:
+          comment-tag: pass-uses-external-url
+          headline: External - Eyesbound.com
+          webapp-url: 'https://eyesbound.com'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ---- Aggregate gate ----
+  all-checks-green:
+    name: All checks green
+    if: always()
+    needs:
+      - lint
+      - test
+      - sync-pr-title-with-commits
+      - lint-pr-title
+      - fail-all-defaults
+      - fail-http-status-404
+      - fail-missing-artifact-name
+      - pass-all-inputs
+      - pass-external-login-pre-script
+      - pass-http-status-no-validate
+      - pass-http-status-positive-404
+      - pass-localhost-no-port
+      - pass-logs-below-threshold
+      - pass-page-emits-no-logs
+      - pass-regexp
+      - pass-uses-external-url
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Fail if any required job failed or was cancelled
+        shell: bash
+        run: |
+          results="${{ join(needs.*.result, ' ') }}"
+          echo "Job results: $results"
+          for r in $results; do
+            if [ "$r" = "failure" ] || [ "$r" = "cancelled" ]; then
+              echo "::error::A required job did not pass (result=$r)."
+              exit 1
+            fi
+          done
+          echo "All jobs succeeded or were skipped."
