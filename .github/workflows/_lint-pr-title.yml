@@ -1,12 +1,7 @@
 name: "Lint PR Title"
 
 on:
-  pull_request:
-    types:
-      - opened
-      - edited
-      - synchronize
-      - reopened
+  workflow_call:
 
 jobs:
   sync-pr-title-with-commits:

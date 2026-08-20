@@ -1,12 +1,7 @@
-name: "Negative Test - missing artifact name"
+name: "Negative Test - HTTP 404 fails by default"
 
 on:
-  pull_request:
-    types:
-      - opened
-      - reopened
-      - synchronize
-      - closed
+  workflow_call:
 
 permissions:
   pull-requests: write
@@ -14,16 +9,30 @@ permissions:
 jobs:
   fail:
     runs-on: ubuntu-latest
-    name: Should fail early - has localhost but no artifact name
+    name: Should fail - HTTP 404 fails by default (validate-status enabled)
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
+
+      - name: Create app with placeholder file
+        run: |
+          mkdir -p app
+          touch app/index.html
+
+      - name: Upload app
+        uses: actions/upload-artifact@v7
+        with:
+          name: empty-app-404
+          path: app
 
       - name: Use WebApp Console Log Action
         id: webapp_console_log
         uses: ./
         with:
-          webapp-url: 'http://localhost'
+          artifact-name: empty-app-404
+          comment-tag: fail-http-status-404
+          headline: Should fail - HTTP 404 fails by default
+          webapp-url: 'http://localhost/nonexistent-page.html'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true

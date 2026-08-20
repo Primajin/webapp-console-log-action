@@ -1,12 +1,7 @@
-name: "Positive Test - has localhost but no port"
+name: "Positive Test - regular expression"
 
 on:
-  pull_request:
-    types:
-      - opened
-      - reopened
-      - synchronize
-      - closed
+  workflow_call:
 
 permissions:
   pull-requests: write
@@ -14,7 +9,7 @@ permissions:
 jobs:
   pass:
     runs-on: ubuntu-latest
-    name: Should pass - has localhost but no port
+    name: Should pass - has regular expression
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -48,17 +43,20 @@ jobs:
       - name: Upload index.html
         uses: actions/upload-artifact@v7
         with:
-          name: index-html
+          name: index-html-pass-regexp
           path: index.html
 
       - name: Use WebApp Console Log Action
         uses: ./
         with:
-          artifact-name: index-html
-          comment-tag: pass-localhost-no-port
-          headline: Should pass - has localhost but no port
+          artifact-name: index-html-pass-regexp
+          comment-tag: pass-regexp
+          headline: Some messages will be hidden by the regexp
           max-log-level: error
-          min-log-level: warning
+          regexp-error: 'This is' # This is an error in => an error in (trimmed)
+          regexp-info: 'This \D+ workflow' # info and log completely hidden
+          regexp-verbose: 'debug ' # This is a debug message => This is a message
+          regexp-warning: 'pass ' # in the pass workflow => in the workflow
           wait-time: 5
           webapp-url: 'http://localhost'
         env:
