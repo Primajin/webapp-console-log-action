@@ -1,12 +1,7 @@
-name: "Positive Test - all parameters set"
+name: "Positive Test - has localhost but no port"
 
 on:
-  pull_request:
-    types:
-      - opened
-      - reopened
-      - synchronize
-      - closed
+  workflow_call:
 
 permissions:
   pull-requests: write
@@ -14,7 +9,7 @@ permissions:
 jobs:
   pass:
     runs-on: ubuntu-latest
-    name: Should pass - has all parameters set
+    name: Should pass - has localhost but no port
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -48,21 +43,17 @@ jobs:
       - name: Upload index.html
         uses: actions/upload-artifact@v7
         with:
-          name: index-html
+          name: index-html-pass-localhost-no-port
           path: index.html
 
       - name: Use WebApp Console Log Action
         uses: ./
         with:
-          artifact-name: index-html
-          comment-tag: pass-all-inputs
-          headline: No emojis, min log level warning, max log level error
+          artifact-name: index-html-pass-localhost-no-port
+          comment-tag: pass-localhost-no-port
+          headline: Should pass - has localhost but no port
           max-log-level: error
           min-log-level: warning
-          port: 3001
-          regexp-error: 'This is' # This is an error in => an error in (trimmed)
-          regexp-warning: 'pass ' # in the pass workflow => in the workflow
-          show-emoji: false
           wait-time: 5
           webapp-url: 'http://localhost'
         env:

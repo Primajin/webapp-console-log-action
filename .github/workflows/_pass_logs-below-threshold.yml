@@ -1,12 +1,7 @@
-name: "Positive Test - page emits no logs at all"
+name: "Positive Test - logs below min-log-level"
 
 on:
-  pull_request:
-    types:
-      - opened
-      - reopened
-      - synchronize
-      - closed
+  workflow_call:
 
 permissions:
   pull-requests: write
@@ -14,12 +9,12 @@ permissions:
 jobs:
   pass:
     runs-on: ubuntu-latest
-    name: Should pass - page emits no logs at all (totalObserved = 0)
+    name: Should pass - page has logs but all below min-log-level threshold
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
 
-      - name: Create fake App with no console outputs
+      - name: Create fake App with console outputs below threshold
         run: |
           touch index.html
           
@@ -29,10 +24,12 @@ jobs:
           <html>
           <head>
           <title>New Page</title>
-          <link rel="icon" href="data:,">
           </head>
           <body>
               <h1>Hello, World!</h1>
+              <script>
+                console.debug('This is a debug message and likely hidden in the pass workflow');
+              </script>
           </body>
           </html>
           
@@ -41,15 +38,16 @@ jobs:
       - name: Upload index.html
         uses: actions/upload-artifact@v7
         with:
-          name: index-html-no-console
+          name: index-html-pass-logs-below-threshold
           path: index.html
 
       - name: Use WebApp Console Log Action
         uses: ./
         with:
-          artifact-name: index-html-no-console
-          comment-tag: pass-page-emits-no-logs
-          headline: Should pass - page emits no logs at all
+          artifact-name: index-html-pass-logs-below-threshold
+          comment-tag: pass-logs-below-threshold
+          headline: Should pass - all logs below min-log-level threshold
+          min-log-level: warning
           wait-time: 5
           webapp-url: 'http://localhost'
         env:

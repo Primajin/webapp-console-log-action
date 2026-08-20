@@ -1,12 +1,7 @@
-name: "Positive Test - HTTP 404 passes when configured as positive"
+name: "Positive Test - HTTP 404 passes when validation disabled"
 
 on:
-  pull_request:
-    types:
-      - opened
-      - reopened
-      - synchronize
-      - closed
+  workflow_call:
 
 permissions:
   pull-requests: write
@@ -14,7 +9,7 @@ permissions:
 jobs:
   pass:
     runs-on: ubuntu-latest
-    name: Should pass - HTTP 404 is an expected positive status code
+    name: Should pass - HTTP 404 passes when validate-status is false
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -27,17 +22,17 @@ jobs:
       - name: Upload app
         uses: actions/upload-artifact@v7
         with:
-          name: empty-app-positive-404
+          name: empty-app-no-validate
           path: app
 
       - name: Use WebApp Console Log Action
         uses: ./
         with:
-          artifact-name: empty-app-positive-404
-          comment-tag: pass-http-status-positive-404
-          headline: Should pass - HTTP 404 is a configured positive status
+          artifact-name: empty-app-no-validate
+          comment-tag: pass-http-status-no-validate
+          headline: Should pass - HTTP 404 ignored when validate-status is false
           max-log-level: 'error'
-          positive-statuses: '200,404'
+          validate-status: 'false'
           webapp-url: 'http://localhost/nonexistent-page.html'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

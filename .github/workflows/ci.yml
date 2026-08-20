@@ -1,0 +1,147 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - closed
+      - edited
+
+permissions: {}
+
+jobs:
+  test:
+    if: github.event_name == 'push' || (github.base_ref == 'main' && contains(fromJSON('["opened","synchronize","reopened"]'), github.event.action))
+    permissions:
+      contents: read
+    uses: ./.github/workflows/_test.yml
+    secrets: inherit
+
+  lint-pr-title:
+    if: github.event_name == 'pull_request' && contains(fromJSON('["opened","edited","synchronize","reopened"]'), github.event.action)
+    permissions:
+      pull-requests: write
+    uses: ./.github/workflows/_lint-pr-title.yml
+    secrets: inherit
+
+  fail-all-defaults:
+    if: github.event_name == 'pull_request' && contains(fromJSON('["opened","reopened","synchronize","closed"]'), github.event.action)
+    permissions:
+      pull-requests: write
+    uses: ./.github/workflows/_fail_all-defaults.yml
+    secrets: inherit
+
+  fail-http-status-404:
+    if: github.event_name == 'pull_request' && contains(fromJSON('["opened","reopened","synchronize","closed"]'), github.event.action)
+    permissions:
+      pull-requests: write
+    uses: ./.github/workflows/_fail_http-status-404.yml
+    secrets: inherit
+
+  fail-missing-artifact-name:
+    if: github.event_name == 'pull_request' && contains(fromJSON('["opened","reopened","synchronize","closed"]'), github.event.action)
+    permissions:
+      pull-requests: write
+    uses: ./.github/workflows/_fail_missing-artifact-name.yml
+    secrets: inherit
+
+  pass-all-inputs:
+    if: github.event_name == 'pull_request' && contains(fromJSON('["opened","reopened","synchronize","closed"]'), github.event.action)
+    permissions:
+      pull-requests: write
+    uses: ./.github/workflows/_pass_all-inputs.yml
+    secrets: inherit
+
+  pass-external-login-pre-script:
+    if: github.event_name == 'pull_request' && contains(fromJSON('["opened","reopened","synchronize","closed"]'), github.event.action)
+    permissions:
+      pull-requests: write
+    uses: ./.github/workflows/_pass_external-login-pre-script.yml
+    secrets: inherit
+
+  pass-http-status-no-validate:
+    if: github.event_name == 'pull_request' && contains(fromJSON('["opened","reopened","synchronize","closed"]'), github.event.action)
+    permissions:
+      pull-requests: write
+    uses: ./.github/workflows/_pass_http-status-no-validate.yml
+    secrets: inherit
+
+  pass-http-status-positive-404:
+    if: github.event_name == 'pull_request' && contains(fromJSON('["opened","reopened","synchronize","closed"]'), github.event.action)
+    permissions:
+      pull-requests: write
+    uses: ./.github/workflows/_pass_http-status-positive-404.yml
+    secrets: inherit
+
+  pass-localhost-no-port:
+    if: github.event_name == 'pull_request' && contains(fromJSON('["opened","reopened","synchronize","closed"]'), github.event.action)
+    permissions:
+      pull-requests: write
+    uses: ./.github/workflows/_pass_localhost-no-port.yml
+    secrets: inherit
+
+  pass-logs-below-threshold:
+    if: github.event_name == 'pull_request' && contains(fromJSON('["opened","reopened","synchronize","closed"]'), github.event.action)
+    permissions:
+      pull-requests: write
+    uses: ./.github/workflows/_pass_logs-below-threshold.yml
+    secrets: inherit
+
+  pass-page-emits-no-logs:
+    if: github.event_name == 'pull_request' && contains(fromJSON('["opened","reopened","synchronize","closed"]'), github.event.action)
+    permissions:
+      pull-requests: write
+    uses: ./.github/workflows/_pass_page-emits-no-logs.yml
+    secrets: inherit
+
+  pass-regexp:
+    if: github.event_name == 'pull_request' && contains(fromJSON('["opened","reopened","synchronize","closed"]'), github.event.action)
+    permissions:
+      pull-requests: write
+    uses: ./.github/workflows/_pass_regexp.yml
+    secrets: inherit
+
+  pass-uses-external-url:
+    if: github.event_name == 'pull_request' && contains(fromJSON('["opened","reopened","synchronize","closed"]'), github.event.action)
+    permissions:
+      pull-requests: write
+    uses: ./.github/workflows/_pass_uses-external-url.yml
+    secrets: inherit
+
+  all-green:
+    name: All checks green
+    if: always()
+    needs:
+      - test
+      - lint-pr-title
+      - fail-all-defaults
+      - fail-http-status-404
+      - fail-missing-artifact-name
+      - pass-all-inputs
+      - pass-external-login-pre-script
+      - pass-http-status-no-validate
+      - pass-http-status-positive-404
+      - pass-localhost-no-port
+      - pass-logs-below-threshold
+      - pass-page-emits-no-logs
+      - pass-regexp
+      - pass-uses-external-url
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Fail if any required job failed or was cancelled
+        shell: bash
+        run: |
+          results="${{ join(needs.*.result, ' ') }}"
+          echo "Job results: $results"
+          for r in $results; do
+            if [ "$r" = "failure" ] || [ "$r" = "cancelled" ]; then
+              echo "::error::A required job did not pass (result=$r)."
+              exit 1
+            fi
+          done
+          echo "All jobs succeeded or were skipped."
