@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.4](https://github.com/Primajin/webapp-console-log-action/compare/v1.8.3...v1.8.4) (2026-09-11)
+
+
+### Dependencies
+
+* bump baseline-browser-mapping from 2.10.42 to 2.11.22 ([#86](https://github.com/Primajin/webapp-console-log-action/issues/86)) ([3a6e1fc](https://github.com/Primajin/webapp-console-log-action/commit/3a6e1fcbb036a5d4a6defb91773d9dfd19a83678))
+* bump browserslist from 4.28.5 to 4.28.9 ([#85](https://github.com/Primajin/webapp-console-log-action/issues/85)) ([b4193ba](https://github.com/Primajin/webapp-console-log-action/commit/b4193bad2d6f2af9526d92e227f2d66afd4385c4))
+* bump js-yaml from 4.3.1 to 4.3.2 ([#88](https://github.com/Primajin/webapp-console-log-action/issues/88)) ([a34a69a](https://github.com/Primajin/webapp-console-log-action/commit/a34a69a93f23ae46836de7c6d26610f2658e4a0e))
+
 ## [1.8.3](https://github.com/Primajin/webapp-console-log-action/compare/v1.8.2...v1.8.3) (2026-08-22)
 
 
