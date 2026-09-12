@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.5](https://github.com/Primajin/webapp-console-log-action/compare/v1.8.4...v1.8.5) (2026-09-12)
+
+
+### Dependencies
+
+* bump the dependencies group with 3 updates ([#89](https://github.com/Primajin/webapp-console-log-action/issues/89)) ([1d9a8c6](https://github.com/Primajin/webapp-console-log-action/commit/1d9a8c644ccc9e8722f7e337680048090cb35cef))
+
 ## [1.8.4](https://github.com/Primajin/webapp-console-log-action/compare/v1.8.3...v1.8.4) (2026-09-11)
 
 
