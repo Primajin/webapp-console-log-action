@@ -16,11 +16,11 @@
     },
     "dependencies": {
         "@actions/core": "^3.0.1",
-        "playwright": "^1.62.1"
+        "playwright": "^1.63.0"
     },
     "devDependencies": {
-        "@vitest/coverage-v8": "^4.1.11",
-        "vitest": "^4.1.0",
+        "@vitest/coverage-v8": "^5.0.0",
+        "vitest": "^5.0.0",
         "xo": "^4.0.0"
     }
 }
