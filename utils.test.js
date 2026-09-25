@@ -77,7 +77,8 @@ describe('filterMessage', () => {
 			vi.stubEnv('REGEXP_WARNING', String.raw`\[.+(?:Automatic fallback to software WebGL has been deprecated|GPU stall due to ReadPixels).*`);
 			const {filterMessage} = await import('./utils.js');
 			const warningMessages = [
-				'[GroupMarkerNotSet(crbug.com/242999)!:A0301C00AC2E0000]Automatic fallback to software WebGL has been deprecated. Please use the --enable-unsafe-swiftshader flag to opt in to lower security guarantees for trusted content.',
+				'[GroupMarkerNotSet(crbug.com/242999)!:A0301C00AC2E0000]Automatic fallback to software WebGL has been deprecated. '
+				+ 'Please use the --enable-unsafe-swiftshader flag to opt in to lower security guarantees for trusted content.',
 				'[.WebGL-0x17fc000e5500]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels',
 				'[.WebGL-0x20bc000ce300]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels',
 				'[.WebGL-0x20bc123ce300]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels',
