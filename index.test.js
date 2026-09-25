@@ -9,7 +9,12 @@ import {
 	vi,
 } from 'vitest';
 import {chromium} from 'playwright';
-import {shouldFail, filterMessage, validateStatusCode} from './utils.js';
+import {
+	shouldFail,
+	shouldCapture,
+	filterMessage,
+	validateStatusCode,
+} from './utils.js';
 import {runPreScript} from './pre-script.js';
 
 let consoleListener;
@@ -65,6 +70,8 @@ describe('index.js', () => {
 		vi.mocked(runPreScript).mockResolvedValue(false);
 		vi.mocked(shouldFail).mockReset();
 		vi.mocked(shouldFail).mockReturnValue(false);
+		vi.mocked(shouldCapture).mockReset();
+		vi.mocked(shouldCapture).mockReturnValue(true);
 		vi.mocked(validateStatusCode).mockReset();
 		vi.mocked(validateStatusCode).mockReturnValue({ok: true, reason: ''});
 		vi.mocked(filterMessage).mockReset();
@@ -117,6 +124,19 @@ describe('index.js', () => {
 		await import('./index.js');
 
 		expect(fs.writeFile).toHaveBeenCalledWith('console_output.json', JSON.stringify({info: ['only one message should be there']}, null, 2));
+	});
+
+	test('should not capture messages below the configured minimum log level', async () => {
+		vi.mocked(shouldCapture).mockReturnValue(false);
+		page.goto.mockImplementation(async () => {
+			consoleListener({type: () => 'log', text: () => 'This should not be captured'});
+		});
+
+		await import('./index.js');
+
+		expect(fs.writeFile).toHaveBeenCalledWith('capture_stats.json', JSON.stringify({totalObserved: 1}, null, 2));
+		expect(fs.writeFile).toHaveBeenCalledWith('console_output.json', JSON.stringify({}, null, 2));
+		expect(filterMessage).not.toHaveBeenCalled();
 	});
 
 	test('should set shouldFailAction based on log level', async () => {
