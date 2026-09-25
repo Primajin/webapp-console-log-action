@@ -104,15 +104,19 @@ page.on('console', message => {
 
 	const messageType = message.type();
 	const logLevel = logLevelMapping[messageType] || 'info';
+	if (!shouldCapture(logLevel)) {
+		return;
+	}
+
 	const logMessage = message.text();
-	if (shouldCapture(logLevel)) {
-		const filteredMessage = filterMessage(logLevel, logMessage);
-		if (filteredMessage.length > 0) {
-			consoleMessages.get(logLevel).push(filteredMessage);
-			if (shouldFail(logLevel)) {
-				shouldFailAction = true;
-			}
-		}
+	const filteredMessage = filterMessage(logLevel, logMessage);
+	if (filteredMessage.length === 0) {
+		return;
+	}
+
+	consoleMessages.get(logLevel).push(filteredMessage);
+	if (shouldFail(logLevel)) {
+		shouldFailAction = true;
 	}
 });
 

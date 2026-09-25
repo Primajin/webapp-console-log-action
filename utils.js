@@ -18,13 +18,7 @@ export const isStatusValidationEnabled = () => process.env.VALIDATE_STATUS !== '
  @param {string} envVar - The environment variable value.
  @returns {number[]} - Array of parsed status codes.
  */
-const parseStatusCodes = envVar => {
-	if (!envVar) {
-		return [];
-	}
-
-	return envVar.split(',').map(s => Number(s.trim())).filter(n => Number.isSafeInteger(n) && n >= 100 && n <= 599);
-};
+const parseStatusCodes = envVar => envVar ? envVar.split(',').map(s => Number(s.trim())).filter(n => Number.isSafeInteger(n) && n >= 100 && n <= 599) : [];
 
 /**
  The set of HTTP status codes considered positive (successful).
