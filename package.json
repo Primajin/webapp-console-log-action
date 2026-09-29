@@ -1,6 +1,6 @@
 {
     "name": "webapp-console-log-action",
-    "version": "1.8.6",
+    "version": "1.8.7",
     "description": "Capture console.log output from a web page and post it as a comment on a pull request.",
     "license": "MIT",
     "repository": "https://github.com/Primajin/webapp-console-log-action",
