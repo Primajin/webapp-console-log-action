@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta content="width=device-width, initial-scale=1" name="viewport">
+		<title>Login demo</title>
+		<meta content="Self-hosted login fixture for webapp-console-log-action e2e tests. Demo credentials only." name="description">
+		<meta content="Login demo" property="og:title">
+		<meta content="website" property="og:type">
+		<meta content="https://primajin.github.io/webapp-console-log-action/login-demo/login/" property="og:url">
+		<meta content="https://primajin.github.io/webapp-console-log-action/login-demo/login/og.png" property="og:image">
+	</head>
+	<body>
+		<!--
+			Self-hosted login fixture for the "external login pre-script" test
+			(.github/workflows/_pass_external-login-pre-script.yml). It mimics the
+			structure of the-internet.herokuapp.com/login so the pre-script works
+			unchanged, but stays under our control. Credentials are demo-only.
+		-->
+		<main>
+			<h1>Login Page</h1>
+			<p
+				id="flash"
+				hidden
+				role="alert"
+			></p>
+			<form id="login-form" method="post">
+				<label for="username">Username</label>
+				<input
+					id="username"
+					type="text"
+					autocomplete="off"
+					name="username"
+				>
+				<label for="password">Password</label>
+				<input
+					id="password"
+					type="password"
+					autocomplete="off"
+					name="password"
+				>
+				<button type="submit">Login</button>
+			</form>
+			<section id="secure" hidden>
+				<h2>Secure Area</h2>
+				<p>You logged into a secure area!</p>
+				<a id="logout" href="./">Logout</a>
+			</section>
+		</main>
+		<script>
+		const form = document.getElementById('login-form');
+		const flash = document.getElementById('flash');
+		const secure = document.getElementById('secure');
+
+		form.addEventListener('submit', event => {
+			event.preventDefault();
+			const {username, password} = form.elements;
+			if (username.value === 'tomsmith' && password.value === 'SuperSecretPassword!') {
+				form.hidden = true;
+				flash.hidden = true;
+				secure.hidden = false;
+				// Path ends in /secure (no trailing slash) so `**/secure` URL matchers work
+				history.pushState({}, '', '../secure');
+			} else {
+				flash.textContent = 'Your username or password is invalid!';
+				flash.hidden = false;
+			}
+		});
+
+		document.getElementById('logout').addEventListener('click', event => {
+			event.preventDefault();
+			history.pushState({}, '', './');
+			secure.hidden = true;
+			form.hidden = false;
+			form.reset();
+		});
+		</script>
+	</body>
+</html>
