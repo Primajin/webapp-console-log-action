@@ -1,34 +1,53 @@
 <!doctype html>
 <html lang="en">
-<head>
-	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title>Login demo</title>
-</head>
-<body>
-	<!--
-		Self-hosted login fixture for the "external login pre-script" test
-		(.github/workflows/_pass_external-login-pre-script.yml). It mimics the
-		structure of the-internet.herokuapp.com/login so the pre-script works
-		unchanged, but stays under our control. Credentials are demo-only.
-	-->
-	<main>
-		<h1>Login Page</h1>
-		<p id="flash" role="alert" hidden></p>
-		<form id="login-form">
-			<label for="username">Username</label>
-			<input id="username" name="username" type="text" autocomplete="off">
-			<label for="password">Password</label>
-			<input id="password" name="password" type="password" autocomplete="off">
-			<button type="submit">Login</button>
-		</form>
-		<section id="secure" hidden>
-			<h2>Secure Area</h2>
-			<p>You logged into a secure area!</p>
-			<a href="./" id="logout">Logout</a>
-		</section>
-	</main>
-	<script>
+	<head>
+		<meta charset="utf-8">
+		<meta content="width=device-width, initial-scale=1" name="viewport">
+		<title>Login demo</title>
+		<meta content="Self-hosted login fixture for webapp-console-log-action e2e tests. Demo credentials only." name="description">
+		<meta content="Login demo" property="og:title">
+		<meta content="website" property="og:type">
+		<meta content="https://primajin.github.io/webapp-console-log-action/login-demo/login/" property="og:url">
+		<meta content="https://primajin.github.io/webapp-console-log-action/login-demo/login/og.png" property="og:image">
+	</head>
+	<body>
+		<!--
+			Self-hosted login fixture for the "external login pre-script" test
+			(.github/workflows/_pass_external-login-pre-script.yml). It mimics the
+			structure of the-internet.herokuapp.com/login so the pre-script works
+			unchanged, but stays under our control. Credentials are demo-only.
+		-->
+		<main>
+			<h1>Login Page</h1>
+			<p
+				id="flash"
+				hidden
+				role="alert"
+			></p>
+			<form id="login-form" method="post">
+				<label for="username">Username</label>
+				<input
+					id="username"
+					type="text"
+					autocomplete="off"
+					name="username"
+				>
+				<label for="password">Password</label>
+				<input
+					id="password"
+					type="password"
+					autocomplete="off"
+					name="password"
+				>
+				<button type="submit">Login</button>
+			</form>
+			<section id="secure" hidden>
+				<h2>Secure Area</h2>
+				<p>You logged into a secure area!</p>
+				<a id="logout" href="./">Logout</a>
+			</section>
+		</main>
+		<script>
 		const form = document.getElementById('login-form');
 		const flash = document.getElementById('flash');
 		const secure = document.getElementById('secure');
@@ -55,6 +74,6 @@
 			form.hidden = false;
 			form.reset();
 		});
-	</script>
-</body>
+		</script>
+	</body>
 </html>
