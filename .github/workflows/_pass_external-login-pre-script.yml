@@ -24,7 +24,7 @@ jobs:
           pre-script-timeout: 30000
           regexp-error: '^Failed to load resource: net::ERR_NAME_NOT_RESOLVED$'
           wait-time: 1000
-          webapp-url: 'https://the-internet.herokuapp.com/login'
+          webapp-url: 'https://primajin.github.io/webapp-console-log-action/login-demo/login'
         env:
           DEMO_LOGIN_PASSWORD: SuperSecretPassword!
           DEMO_LOGIN_USERNAME: tomsmith
