@@ -1,6 +1,4 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["local>Primajin/.github:release-please"],
-  "semanticCommitType": "deps",
-  "semanticCommitScope": null
+  "extends": ["local>Primajin/.github:release-please"]
 }
