@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.7](https://github.com/Primajin/webapp-console-log-action/compare/v1.8.6...v1.8.7) (2026-10-12)
+
+
+### Dependencies
+
+* bump undici from 6.28.0 to 6.29.0 ([#94](https://github.com/Primajin/webapp-console-log-action/issues/94)) ([0678596](https://github.com/Primajin/webapp-console-log-action/commit/06785961f33c7452893973e4076eab753da61006))
+* refresh lockfile ([#106](https://github.com/Primajin/webapp-console-log-action/issues/106)) ([36dfef5](https://github.com/Primajin/webapp-console-log-action/commit/36dfef561311d7c316bd386aa10e71db2ff05be5))
+* update @vitest/coverage-v8, playwright, vitest ([33988e3](https://github.com/Primajin/webapp-console-log-action/commit/33988e3e9251379e413103b93868a3f4302c1bd5))
+* update node ([3da7a3f](https://github.com/Primajin/webapp-console-log-action/commit/3da7a3fdfcb2385689af572c2f2f8a9dd5b3530d))
+
 ## [1.8.6](https://github.com/Primajin/webapp-console-log-action/compare/v1.8.5...v1.8.6) (2026-09-19)
 
 
