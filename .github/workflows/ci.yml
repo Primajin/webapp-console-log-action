@@ -18,15 +18,19 @@ jobs:
     if: github.event_name == 'push' || (github.base_ref == 'main' && contains(fromJSON('["opened","synchronize","reopened"]'), github.event.action))
     permissions:
       contents: read
-    uses: ./.github/workflows/_test.yml
-    secrets: inherit
+    uses: Primajin/.github/.github/workflows/reusable-test.yml@v1
+    with:
+      node-version: '22'
+      coverage: true
+      test-job-name: Make sure the unit tests pass.
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   lint-pr-title:
     if: github.event_name == 'pull_request' && contains(fromJSON('["opened","edited","synchronize","reopened"]'), github.event.action)
     permissions:
       pull-requests: write
-    uses: ./.github/workflows/_lint-pr-title.yml
-    secrets: inherit
+    uses: Primajin/.github/.github/workflows/reusable-lint-pr-title.yml@v1
 
   fail-all-defaults:
     if: github.event_name == 'pull_request' && contains(fromJSON('["opened","reopened","synchronize","closed"]'), github.event.action)
