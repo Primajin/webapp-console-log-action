@@ -116,29 +116,27 @@ runs:
       with:
         node-version: '24'
 
-    - name: Set ACTION_PATH environment variable
-      id: set-action-path
-      run: |
-        echo "ACTION_PATH=${GITHUB_ACTION_PATH}" >> "$GITHUB_ENV"
-        echo "lockfile-hash=$(sha256sum "${GITHUB_ACTION_PATH}/package-lock.json" | cut -c1-16)" >> "$GITHUB_OUTPUT"
+    - name: Install dependencies
+      run: npm ci --omit=dev
       shell: bash
+      working-directory: ${{ github.action_path }}
 
-    - name: Cache action dependencies
+    - name: Resolve Playwright version
+      id: playwright
+      run: echo "version=$(node -p "require('./package-lock.json').packages['node_modules/playwright'].version")" >> "$GITHUB_OUTPUT"
+      shell: bash
+      working-directory: ${{ github.action_path }}
+
+    - name: Cache Playwright browsers
       uses: actions/cache@v6
       with:
-        path: ${{ env.ACTION_PATH }}/node_modules
-        key: action-deps-${{ steps.set-action-path.outputs.lockfile-hash }}
-        restore-keys: action-deps-
-
-    - name: Install dependencies
-      run: npm ci
-      shell: bash
-      working-directory: ${{ env.ACTION_PATH }}
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
 
     - name: Setup Chromium
       run: npx playwright install chromium
       shell: bash
-      working-directory: ${{ env.ACTION_PATH }}
+      working-directory: ${{ github.action_path }}
 
     - name: Download artifact
       if: contains(inputs.webapp-url, 'http://localhost')
@@ -175,7 +173,7 @@ runs:
     - name: Execute Capture Script
       run: node index.js
       shell: bash
-      working-directory: ${{ env.ACTION_PATH }}
+      working-directory: ${{ github.action_path }}
       env:
         MAX_LOG_LEVEL: ${{ inputs.max-log-level }}
         MIN_LOG_LEVEL: ${{ inputs.min-log-level }}
@@ -199,7 +197,7 @@ runs:
         jq -c . console_output.json >> "$GITHUB_OUTPUT"
         echo 'EOF' >> "$GITHUB_OUTPUT"
       shell: bash
-      working-directory: ${{ env.ACTION_PATH }}
+      working-directory: ${{ github.action_path }}
 
     - name: Format Console Output  # Step to format the console output into GitHub Flavored Markdown
       id: format_console_output
@@ -258,7 +256,7 @@ runs:
           done
         fi
       shell: bash
-      working-directory: ${{ env.ACTION_PATH }}
+      working-directory: ${{ github.action_path }}
       env:
         HEADLINE: ${{ inputs.headline }}
         SHOULD_FAIL_REASON: ${{ env.SHOULD_FAIL_REASON }}
@@ -269,7 +267,7 @@ runs:
       uses: thollander/actions-comment-pull-request@v3
       with:
         comment-tag: ${{ inputs.comment-tag }}
-        file-path: ${{ env.ACTION_PATH }}/formatted_console_output.md
+        file-path: ${{ github.action_path }}/formatted_console_output.md
       env:
         GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }}
 
