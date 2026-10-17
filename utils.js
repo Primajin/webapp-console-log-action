@@ -14,6 +14,34 @@ export const logLevels = ['verbose', 'info', 'warning', 'error'];
 export const isStatusValidationEnabled = () => process.env.VALIDATE_STATUS !== 'false';
 
 /**
+ Whether the value is a valid TCP port: digits only, 1 to 65535.
+ @param {string} value - The port as passed in by the workflow.
+ @returns {boolean} - True if the value is a valid port.
+ */
+export const isValidPort = value => /^\d{1,5}$/v.test(value) && Number(value) >= 1 && Number(value) <= 65_535;
+
+/**
+ Builds the URL to capture: the web application URL, with the port replaced when one is given.
+ @param {string} webAppUrl - The URL of the web application.
+ @param {string} port - The port to use, or an empty string to keep the URL as it is.
+ @returns {string} - The URL to open.
+ @throws {Error} - If a port is given that is not a valid port.
+ */
+export const buildCaptureUrl = (webAppUrl, port) => {
+	if (!port) {
+		return webAppUrl;
+	}
+
+	if (!isValidPort(port)) {
+		throw new Error(`Invalid port "${port}": it must be a whole number from 1 to 65535.`);
+	}
+
+	const urlObject = new URL(webAppUrl);
+	urlObject.port = port;
+	return urlObject.href;
+};
+
+/**
  Parses a comma-separated list of HTTP status codes from an environment variable.
  @param {string} envVar - The environment variable value.
  @returns {number[]} - Array of parsed status codes.
