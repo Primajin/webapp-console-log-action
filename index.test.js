@@ -47,13 +47,17 @@ vi.mock('./pre-script.js', () => ({
 	runPreScript: vi.fn(async () => false),
 }));
 
-vi.mock('./utils.js', () => ({
-	filterMessage: vi.fn((level, message) => message),
-	logLevels: ['verbose', 'info', 'warning', 'error'],
-	shouldCapture: vi.fn(() => true),
-	shouldFail: vi.fn(() => false),
-	validateStatusCode: vi.fn(() => ({ok: true, reason: ''})),
-}));
+vi.mock('./utils.js', async importOriginal => {
+	const {buildCaptureUrl} = await importOriginal();
+	return {
+		buildCaptureUrl,
+		filterMessage: vi.fn((level, message) => message),
+		logLevels: ['verbose', 'info', 'warning', 'error'],
+		shouldCapture: vi.fn(() => true),
+		shouldFail: vi.fn(() => false),
+		validateStatusCode: vi.fn(() => ({ok: true, reason: ''})),
+	};
+});
 
 describe('index.js', () => {
 	beforeEach(() => {
@@ -160,6 +164,14 @@ describe('index.js', () => {
 
 		expect(page.goto).toHaveBeenCalledWith('https://example.com:3000/');
 		expect(page.waitForTimeout).toHaveBeenCalledWith(1000);
+	});
+
+	test('should refuse an invalid port instead of opening the page', async () => {
+		vi.stubEnv('PORT', '3000;id');
+		vi.stubEnv('WEBAPP_URL', 'http://localhost');
+
+		await expect(import('./index.js')).rejects.toThrow('Invalid port "3000;id"');
+		expect(page.goto).not.toHaveBeenCalled();
 	});
 
 	test('should run pre-script before capturing later logs', async () => {

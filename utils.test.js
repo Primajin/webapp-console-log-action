@@ -255,3 +255,39 @@ describe('validateStatusCode', () => {
 		});
 	});
 });
+
+describe('isValidPort', () => {
+	test.each(['1', '80', '3000', '3001', '65535', '08080'])('accepts "%s"', async value => {
+		const {isValidPort} = await import('./utils.js');
+		expect(isValidPort(value)).toBe(true);
+	});
+
+	test.each(['', '0', '65536', '99999', '123456', '-1', '3.5', '30 00', 'abc', '3000a', '3000;id', '3000\nport=1', '$(id)', '１２３'])('rejects %j', async value => {
+		const {isValidPort} = await import('./utils.js');
+		expect(isValidPort(value)).toBe(false);
+	});
+});
+
+describe('buildCaptureUrl', () => {
+	test('returns the URL untouched when no port is given', async () => {
+		const {buildCaptureUrl} = await import('./utils.js');
+		expect(buildCaptureUrl('http://localhost', '')).toBe('http://localhost');
+		expect(buildCaptureUrl('https://example.com/path?a=1', '')).toBe('https://example.com/path?a=1');
+	});
+
+	test('sets the port on the URL', async () => {
+		const {buildCaptureUrl} = await import('./utils.js');
+		expect(buildCaptureUrl('http://localhost', '3000')).toBe('http://localhost:3000/');
+		expect(buildCaptureUrl('http://localhost/nonexistent-page.html', '3001')).toBe('http://localhost:3001/nonexistent-page.html');
+	});
+
+	test('replaces a port that is already in the URL', async () => {
+		const {buildCaptureUrl} = await import('./utils.js');
+		expect(buildCaptureUrl('http://localhost:8080/a', '3000')).toBe('http://localhost:3000/a');
+	});
+
+	test.each(['abc', '0', '70000', '3000;id'])('throws for the invalid port "%s"', async value => {
+		const {buildCaptureUrl} = await import('./utils.js');
+		expect(() => buildCaptureUrl('http://localhost', value)).toThrow(`Invalid port "${value}": it must be a whole number from 1 to 65535.`);
+	});
+});

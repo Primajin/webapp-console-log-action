@@ -4,6 +4,7 @@ import {chromium} from 'playwright';
 import {exportVariable} from '@actions/core';
 import {runPreScript} from './pre-script.js';
 import {
+	buildCaptureUrl,
 	filterMessage,
 	shouldCapture,
 	shouldFail,
@@ -47,15 +48,7 @@ const waitTime = process.env.WAIT_TIME || '5000';
  @default 'http://localhost'
  */
 const webAppUrl = process.env.WEBAPP_URL || 'http://localhost';
-const captureUrl = (() => {
-	if (!port) {
-		return webAppUrl;
-	}
-
-	const urlObject = new URL(webAppUrl);
-	urlObject.port = port;
-	return urlObject.href;
-})();
+const captureUrl = buildCaptureUrl(webAppUrl, port);
 
 /**
  Flag to indicate if the action should fail.

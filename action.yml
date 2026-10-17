@@ -78,23 +78,35 @@ outputs:
 runs:
   using: 'composite'
   steps:
+    # Inputs reach the shell only through env: they are never interpolated into a script body.
     - name: Check artifact name requirement
       run: |
-        if [[ "${{ inputs.webapp-url }}" == *"http://localhost"* && -z "${{ inputs.artifact-name }}" ]]; then
+        if [[ "$WEBAPP_URL" == *"http://localhost"* && -z "$ARTIFACT_NAME" ]]; then
           echo "Error: artifact-name is required when webapp-url points to localhost."
           exit 1
         fi
       shell: bash
+      env:
+        ARTIFACT_NAME: ${{ inputs.artifact-name }}
+        WEBAPP_URL: ${{ inputs.webapp-url }}
 
     - name: Set port to 3000 if webapp-url is localhost and port is not set
       id: set-port
       run: |
-        if [[ "${{ inputs.webapp-url }}" == *"http://localhost"* && -z "${{ inputs.port }}" ]]; then
-          echo "port=3000" >> $GITHUB_ENV
-        else
-          echo "port=${{ inputs.port }}" >> $GITHUB_ENV
+        port="$INPUT_PORT"
+        if [[ -z "$port" && "$WEBAPP_URL" == *"http://localhost"* ]]; then
+          port=3000
         fi
+        # The port ends up in a command line and in the capture URL, so it has to be a plain number
+        if [[ -n "$port" ]] && { [[ ! "$port" =~ ^[0-9]{1,5}$ ]] || (( 10#$port < 1 || 10#$port > 65535 )); }; then
+          printf 'Error: port must be a whole number from 1 to 65535 (got %q).\n' "$port"
+          exit 1
+        fi
+        echo "port=$port" >> "$GITHUB_OUTPUT"
       shell: bash
+      env:
+        INPUT_PORT: ${{ inputs.port }}
+        WEBAPP_URL: ${{ inputs.webapp-url }}
 
     - name: Checkout Code
       uses: actions/checkout@v7
@@ -104,23 +116,11 @@ runs:
       with:
         node-version: '24'
 
-    - name: Download artifact
-      if: contains(inputs.webapp-url, 'http://localhost')
-      uses: actions/download-artifact@v8
-      with:
-        name: ${{ inputs.artifact-name }}
-        path: app
-
-    - name: Run http-server in the background
-      if: contains(inputs.webapp-url, 'http://localhost')
-      run: npx http-server app/ -p ${{ env.port }} &
-      shell: bash
-
     - name: Set ACTION_PATH environment variable
       id: set-action-path
       run: |
-        echo "ACTION_PATH=${GITHUB_ACTION_PATH}" >> $GITHUB_ENV
-        echo "lockfile-hash=$(sha256sum ${GITHUB_ACTION_PATH}/package-lock.json | cut -c1-16)" >> $GITHUB_OUTPUT
+        echo "ACTION_PATH=${GITHUB_ACTION_PATH}" >> "$GITHUB_ENV"
+        echo "lockfile-hash=$(sha256sum "${GITHUB_ACTION_PATH}/package-lock.json" | cut -c1-16)" >> "$GITHUB_OUTPUT"
       shell: bash
 
     - name: Cache action dependencies
@@ -140,6 +140,38 @@ runs:
       shell: bash
       working-directory: ${{ env.ACTION_PATH }}
 
+    - name: Download artifact
+      if: contains(inputs.webapp-url, 'http://localhost')
+      uses: actions/download-artifact@v8
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: app
+
+    - name: Run http-server in the background
+      if: contains(inputs.webapp-url, 'http://localhost')
+      run: |
+        # http-server is a locked dependency of this action (not fetched with npx), it serves app/ of the caller's workspace
+        log="$RUNNER_TEMP/http-server.log"
+        nohup "${GITHUB_ACTION_PATH}/node_modules/.bin/http-server" app/ -p "$PORT" > "$log" 2>&1 &
+        server_pid=$!
+        for _ in $(seq 1 30); do
+          if ! kill -0 "$server_pid" 2> /dev/null; then
+            echo "Error: http-server exited before it was ready. Its output:"
+            cat "$log"
+            exit 1
+          fi
+          if curl --silent --output /dev/null "http://localhost:${PORT}/"; then
+            exit 0
+          fi
+          sleep 1
+        done
+        echo "Error: http-server did not answer on port ${PORT} within 30 seconds. Its output:"
+        cat "$log"
+        exit 1
+      shell: bash
+      env:
+        PORT: ${{ steps.set-port.outputs.port }}
+
     - name: Execute Capture Script
       run: node index.js
       shell: bash
@@ -148,7 +180,7 @@ runs:
         MAX_LOG_LEVEL: ${{ inputs.max-log-level }}
         MIN_LOG_LEVEL: ${{ inputs.min-log-level }}
         NEGATIVE_STATUSES: ${{ inputs.negative-statuses }}
-        PORT: ${{ env.port }}
+        PORT: ${{ steps.set-port.outputs.port }}
         POSITIVE_STATUSES: ${{ inputs.positive-statuses }}
         PRE_SCRIPT_PATH: ${{ inputs.pre-script-path }}
         PRE_SCRIPT_TIMEOUT: ${{ inputs.pre-script-timeout }}
@@ -163,9 +195,9 @@ runs:
     - name: Set Output
       id: capture-console
       run: |
-        echo 'console<<EOF' >> $GITHUB_OUTPUT
-        jq -c . console_output.json >> $GITHUB_OUTPUT
-        echo 'EOF' >> $GITHUB_OUTPUT
+        echo 'console<<EOF' >> "$GITHUB_OUTPUT"
+        jq -c . console_output.json >> "$GITHUB_OUTPUT"
+        echo 'EOF' >> "$GITHUB_OUTPUT"
       shell: bash
       working-directory: ${{ env.ACTION_PATH }}
 
@@ -173,10 +205,10 @@ runs:
       id: format_console_output
       run: |
         # Create a markdown file and add a main heading
-        echo "# ${{ inputs.headline }}" > formatted_console_output.md
+        echo "# $HEADLINE" > formatted_console_output.md
         # Check if there is an early-exit reason (e.g. HTTP status validation failure)
         if [ -n "$SHOULD_FAIL_REASON" ]; then
-          if [ "${{ inputs.show-emoji }}" = "true" ]; then
+          if [ "$SHOW_EMOJI" = "true" ]; then
             echo "❌ $SHOULD_FAIL_REASON" >> formatted_console_output.md
           else
             echo "$SHOULD_FAIL_REASON" >> formatted_console_output.md
@@ -184,7 +216,7 @@ runs:
         # Check if the console_output.json file is empty or contains no logs
         elif [ ! -s console_output.json ] || [ "$(jq -r 'keys | length' console_output.json)" -eq 0 ]; then
           total_observed=$(jq -r '.totalObserved' capture_stats.json 2>/dev/null || echo "0")
-          if [ "${{ inputs.show-emoji }}" = "true" ]; then
+          if [ "$SHOW_EMOJI" = "true" ]; then
             if [ "$total_observed" -gt 0 ]; then
               echo "✅ No unexpected logs were captured" >> formatted_console_output.md
             else
@@ -203,7 +235,7 @@ runs:
             # Capitalize the first character of the key
             capitalized_key=$(echo "$key" | awk '{print toupper(substr($0, 1, 1)) tolower(substr($0, 2))}')
             # Add a subheading for each log level with matching emoji if show-emoji is true
-            if [ "${{ inputs.show-emoji }}" = "true" ]; then
+            if [ "$SHOW_EMOJI" = "true" ]; then
               case "$key" in
                 verbose) emoji="💬" ;;
                 info) emoji="ℹ️" ;;
@@ -228,7 +260,9 @@ runs:
       shell: bash
       working-directory: ${{ env.ACTION_PATH }}
       env:
+        HEADLINE: ${{ inputs.headline }}
         SHOULD_FAIL_REASON: ${{ env.SHOULD_FAIL_REASON }}
+        SHOW_EMOJI: ${{ inputs.show-emoji }}
 
     - name: Post Console Output to PR
       if: github.event_name == 'pull_request'
