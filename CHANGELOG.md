@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0](https://github.com/Primajin/webapp-console-log-action/compare/v1.8.7...v2.0.0) (2026-10-18)
+
+
+### ⚠ BREAKING CHANGES
+
+* the action no longer runs actions/checkout. Only workflows that set pre-script-path without their own actions/checkout step before the action break: they used to find the script because the action checked out the repository for them, and now fail at the start with "pre-script-path ... does not point to an existing file ... add an actions/checkout step before it". The fix is one line: add "- uses: actions/checkout@v4" before the action. Workflows without pre-script-path are not affected.
+
+### Bug Fixes
+
+* decide once whether the url is local and use that everywhere ([#121](https://github.com/Primajin/webapp-console-log-action/issues/121)) ([0e21ecb](https://github.com/Primajin/webapp-console-log-action/commit/0e21ecb1e0526bf0fa0ccb2d377672e4322a3fbc))
+* drop the redundant checkout and ask for one when the pre-script is missing ([#123](https://github.com/Primajin/webapp-console-log-action/issues/123)) ([8adf2db](https://github.com/Primajin/webapp-console-log-action/commit/8adf2dbfd211273e46b82a14f1dd40c47db0f7af))
+* pass inputs through env and install only production dependencies ([#116](https://github.com/Primajin/webapp-console-log-action/issues/116)) ([e73d3cb](https://github.com/Primajin/webapp-console-log-action/commit/e73d3cbbab2d6dd055ae54298c669c7c3ac86a6d))
+* prefix pre-script load errors and let startCapture be optional ([#115](https://github.com/Primajin/webapp-console-log-action/issues/115)) ([80cc88c](https://github.com/Primajin/webapp-console-log-action/commit/80cc88c25458a96603d36f86416a10756190a669))
+* report a failing pre-script in the comment instead of crashing the later steps ([#120](https://github.com/Primajin/webapp-console-log-action/issues/120)) ([8bb5f13](https://github.com/Primajin/webapp-console-log-action/commit/8bb5f130f5797f34925357c0ae88afe436178700))
+
+
+### Dependencies
+
+* update @vitest/coverage-v8, playwright, vitest ([3a9c84c](https://github.com/Primajin/webapp-console-log-action/commit/3a9c84c4a96b73ca964e534365808e5b78766451))
+* update katex ([8173bf7](https://github.com/Primajin/webapp-console-log-action/commit/8173bf76d3c7675c8c6d0bf3c92da4c04ec9cda5))
+
 ## [1.8.7](https://github.com/Primajin/webapp-console-log-action/compare/v1.8.6...v1.8.7) (2026-10-12)
 
 
