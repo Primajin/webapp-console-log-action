@@ -43,14 +43,28 @@ describe('resolvePreScriptPath', () => {
 	});
 });
 
+const args = (overrides = {}) => ({
+	browser: {},
+	context: {},
+	page: {},
+	startCapture: vi.fn(),
+	url: 'https://example.com',
+	...overrides,
+});
+
 describe('getPreScriptTimeout', () => {
 	test('should use the configured timeout', () => {
 		vi.stubEnv('PRE_SCRIPT_TIMEOUT', '1500');
 		expect(getPreScriptTimeout()).toBe(1500);
 	});
 
-	test('should fall back to the default timeout', () => {
-		vi.stubEnv('PRE_SCRIPT_TIMEOUT', 'invalid');
+	test('should use the default timeout when the variable is not set', () => {
+		vi.stubEnv('PRE_SCRIPT_TIMEOUT', undefined);
+		expect(getPreScriptTimeout()).toBe(30_000);
+	});
+
+	test.each(['invalid', '', '0', '-5', 'Infinity', 'NaN'])('should fall back to the default timeout for "%s"', value => {
+		vi.stubEnv('PRE_SCRIPT_TIMEOUT', value);
 		expect(getPreScriptTimeout()).toBe(30_000);
 	});
 });
@@ -75,6 +89,10 @@ describe('loadPreScript', () => {
 		} finally {
 			await rm(directory, {force: true, recursive: true});
 		}
+	});
+
+	test('should reject a missing file', async () => {
+		await expect(loadPreScript('/nonexistent/pre-script.mjs')).rejects.toThrow();
 	});
 });
 
@@ -132,6 +150,121 @@ describe('runPreScript', () => {
 		} finally {
 			await rm(directory, {force: true, recursive: true});
 		}
+	});
+
+	test('should pass browser, context, page and url to the pre-script', async () => {
+		const {directory, filePath} = await writePreScript(`
+			export default async ({browser, context, page, url}) => {
+				if (browser.id !== 1 || context.id !== 2 || page.id !== 3) {
+					throw new Error('unexpected objects');
+				}
+
+				if (url !== 'https://example.com') {
+					throw new Error('unexpected url');
+				}
+			};
+		`);
+		vi.stubEnv('PRE_SCRIPT_PATH', filePath);
+
+		try {
+			await expect(runPreScript(args({browser: {id: 1}, context: {id: 2}, page: {id: 3}}))).resolves.toBe(false);
+		} finally {
+			await rm(directory, {force: true, recursive: true});
+		}
+	});
+
+	test('should work without a startCapture callback', async () => {
+		const {directory, filePath} = await writePreScript('export default async ({startCapture}) => startCapture();');
+		vi.stubEnv('PRE_SCRIPT_PATH', filePath);
+
+		try {
+			await expect(runPreScript(args({startCapture: undefined}))).resolves.toBe(true);
+		} finally {
+			await rm(directory, {force: true, recursive: true});
+		}
+	});
+
+	test('should wrap errors thrown by the pre-script', async () => {
+		const {directory, filePath} = await writePreScript('export default async () => { throw new Error("login failed"); };');
+		vi.stubEnv('PRE_SCRIPT_PATH', filePath);
+
+		try {
+			await expect(runPreScript(args())).rejects.toThrow(`Failed to execute pre-script "${filePath}": login failed`);
+		} finally {
+			await rm(directory, {force: true, recursive: true});
+		}
+	});
+
+	test('should keep the original error as the cause', async () => {
+		const {directory, filePath} = await writePreScript('export default async () => { throw new Error("login failed"); };');
+		vi.stubEnv('PRE_SCRIPT_PATH', filePath);
+
+		try {
+			const error = await runPreScript(args()).catch(error_ => error_);
+			expect(error.cause).toBeInstanceOf(Error);
+			expect(error.cause.message).toBe('login failed');
+		} finally {
+			await rm(directory, {force: true, recursive: true});
+		}
+	});
+
+	test('should prefix import-time errors (syntax error)', async () => {
+		const {directory, filePath} = await writePreScript('export default async () => {');
+		vi.stubEnv('PRE_SCRIPT_PATH', filePath);
+
+		try {
+			await expect(runPreScript(args())).rejects.toThrow(`Failed to execute pre-script "${filePath}": `);
+		} finally {
+			await rm(directory, {force: true, recursive: true});
+		}
+	});
+
+	test('should prefix a missing file error', async () => {
+		vi.stubEnv('PRE_SCRIPT_PATH', '/nonexistent/pre-script.mjs');
+		await expect(runPreScript(args())).rejects.toThrow('Failed to execute pre-script "/nonexistent/pre-script.mjs": ');
+	});
+
+	test('should prefix a missing default export error', async () => {
+		const {directory, filePath} = await writePreScript('export const hello = "world";');
+		vi.stubEnv('PRE_SCRIPT_PATH', filePath);
+
+		try {
+			await expect(runPreScript(args())).rejects.toThrow(`Failed to execute pre-script "${filePath}": Pre-script "${filePath}" must export a default async function.`);
+		} finally {
+			await rm(directory, {force: true, recursive: true});
+		}
+	});
+
+	describe('timer cleanup', () => {
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		test('should clear the timeout timer after the pre-script resolves', async () => {
+			const {directory, filePath} = await writePreScript('export default async () => {};');
+			vi.stubEnv('PRE_SCRIPT_PATH', filePath);
+			vi.useFakeTimers();
+
+			try {
+				await runPreScript(args());
+				expect(vi.getTimerCount()).toBe(0);
+			} finally {
+				await rm(directory, {force: true, recursive: true});
+			}
+		});
+
+		test('should clear the timeout timer after the pre-script rejects', async () => {
+			const {directory, filePath} = await writePreScript('export default async () => { throw new Error("nope"); };');
+			vi.stubEnv('PRE_SCRIPT_PATH', filePath);
+			vi.useFakeTimers();
+
+			try {
+				await expect(runPreScript(args())).rejects.toThrow(`Failed to execute pre-script "${filePath}": nope`);
+				expect(vi.getTimerCount()).toBe(0);
+			} finally {
+				await rm(directory, {force: true, recursive: true});
+			}
+		});
 	});
 
 	test('should execute relative script paths from GITHUB_WORKSPACE', async () => {
