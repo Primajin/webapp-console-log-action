@@ -79,22 +79,26 @@ runs:
   using: 'composite'
   steps:
     # Inputs reach the shell only through env: they are never interpolated into a script body.
-    - name: Check artifact name requirement
-      run: |
-        if [[ "$WEBAPP_URL" == *"http://localhost"* && -z "$ARTIFACT_NAME" ]]; then
-          echo "Error: artifact-name is required when webapp-url points to localhost."
-          exit 1
-        fi
-      shell: bash
-      env:
-        ARTIFACT_NAME: ${{ inputs.artifact-name }}
-        WEBAPP_URL: ${{ inputs.webapp-url }}
-
-    - name: Set port to 3000 if webapp-url is localhost and port is not set
+    # This step decides once whether webapp-url is served from the runner (is-local); every later step uses that output.
+    - name: Decide whether webapp-url is local and set the port
       id: set-port
       run: |
+        # Only plain http on a loopback host is local: http-server cannot serve https, and a look-alike host
+        # such as localhost.example.com or a "?next=http://localhost" in an external URL must not count.
+        # Host names and the scheme are case-insensitive, so HTTP://LOCALHOST is local as well.
+        shopt -s nocasematch
+        is_local=false
+        bind_address=
+        local_url_pattern='^http://(localhost|127\.0\.0\.1|\[::1\])(:[0-9]*)?([/?#]|$)'
+        if [[ "$WEBAPP_URL" =~ $local_url_pattern ]]; then
+          is_local=true
+          # http-server listens on IPv4 only by default, so [::1] needs the dual-stack address
+          if [[ "${BASH_REMATCH[1]}" == '[::1]' ]]; then
+            bind_address='::'
+          fi
+        fi
         port="$INPUT_PORT"
-        if [[ -z "$port" && "$WEBAPP_URL" == *"http://localhost"* ]]; then
+        if [[ -z "$port" && "$is_local" == true ]]; then
           port=3000
         fi
         # The port ends up in a command line and in the capture URL, so it has to be a plain number
@@ -102,11 +106,26 @@ runs:
           printf 'Error: port must be a whole number from 1 to 65535 (got %q).\n' "$port"
           exit 1
         fi
-        echo "port=$port" >> "$GITHUB_OUTPUT"
+        {
+          echo "is-local=$is_local"
+          echo "port=$port"
+          echo "bind-address=$bind_address"
+        } >> "$GITHUB_OUTPUT"
       shell: bash
       env:
         INPUT_PORT: ${{ inputs.port }}
         WEBAPP_URL: ${{ inputs.webapp-url }}
+
+    - name: Check artifact name requirement
+      if: steps.set-port.outputs.is-local == 'true'
+      run: |
+        if [[ -z "$ARTIFACT_NAME" ]]; then
+          echo "Error: artifact-name is required when webapp-url points to localhost."
+          exit 1
+        fi
+      shell: bash
+      env:
+        ARTIFACT_NAME: ${{ inputs.artifact-name }}
 
     - name: Checkout Code
       uses: actions/checkout@v7
@@ -139,18 +158,22 @@ runs:
       working-directory: ${{ github.action_path }}
 
     - name: Download artifact
-      if: contains(inputs.webapp-url, 'http://localhost')
+      if: steps.set-port.outputs.is-local == 'true'
       uses: actions/download-artifact@v8
       with:
         name: ${{ inputs.artifact-name }}
         path: app
 
     - name: Run http-server in the background
-      if: contains(inputs.webapp-url, 'http://localhost')
+      if: steps.set-port.outputs.is-local == 'true'
       run: |
         # http-server is a locked dependency of this action (not fetched with npx), it serves app/ of the caller's workspace
         log="$RUNNER_TEMP/http-server.log"
-        nohup "${GITHUB_ACTION_PATH}/node_modules/.bin/http-server" app/ -p "$PORT" > "$log" 2>&1 &
+        args=(app/ -p "$PORT")
+        if [[ -n "$BIND_ADDRESS" ]]; then
+          args+=(-a "$BIND_ADDRESS")
+        fi
+        nohup "${GITHUB_ACTION_PATH}/node_modules/.bin/http-server" "${args[@]}" > "$log" 2>&1 &
         server_pid=$!
         for _ in $(seq 1 30); do
           if ! kill -0 "$server_pid" 2> /dev/null; then
@@ -168,6 +191,7 @@ runs:
         exit 1
       shell: bash
       env:
+        BIND_ADDRESS: ${{ steps.set-port.outputs.bind-address }}
         PORT: ${{ steps.set-port.outputs.port }}
 
     - name: Execute Capture Script

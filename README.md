@@ -13,7 +13,7 @@ issues arise as early as possible - especially when the pull request was opened 
 - Capture console logs from authenticated areas after a login flow
 
 ### Dependencies
-This action uses [http-server](https://www.npmjs.com/package/http-server) to serve the web application (only when passing `localhost` as input, [see details below](#webapp-url)) and [playwright](https://www.npmjs.com/package/playwright) to capture the console logs.
+This action uses [http-server](https://www.npmjs.com/package/http-server) to serve the web application (only when `webapp-url` is a [local URL](#local-urls)) and [playwright](https://www.npmjs.com/package/playwright) to capture the console logs.
 Both are installed from the lockfile of this action (`npm ci --omit=dev`), so the versions are pinned and nothing is fetched at run time beyond that and the Chromium browser, which is cached between runs.
 Furthermore, thanks to [thollander/actions-comment-pull-request](https://github.com/thollander/actions-comment-pull-request) for the comment functionality.
 
@@ -123,7 +123,7 @@ The action opens `webapp-url`, runs the pre-script, and starts collecting consol
 ## Inputs
 | Input                               | Description                                                                                                                                                        | Required | Default       |
 |-------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|---------------|
-| `artifact-name`                     | The name of the artifact to download (required if `webapp-url` points to localhost)                                                                                | false    |               |
+| `artifact-name`                     | The name of the artifact to download (required if `webapp-url` is a [local URL](#local-urls))                                                                              | false    |               |
 | `comment-tag`                       | The tag to use for the comment - so that consecutive pushes will update the same comment                                                                           | false    | console-log   |
 | `headline`                          | The headline for the console logs                                                                                                                                  | false    | Console Logs  |
 | `max-log-level`                     | The maximum log level to allow (verbose, info, warning, error)                                                                                                     | false    | info          |
@@ -132,7 +132,7 @@ The action opens `webapp-url`, runs the pre-script, and starts collecting consol
 | `positive-statuses`                 | Comma-separated list of HTTP status codes considered successful (e.g. `"200,201"`). Defaults to `200` when not set.                                                | false    |               |
 | `pre-script-path`                   | Path to a JavaScript module in `GITHUB_WORKSPACE` that prepares the app before console capture begins                                                              | false    |               |
 | `pre-script-timeout`                | Timeout for the pre-script in milliseconds                                                                                                                         | false    | 30000         |
-| `port`                              | The port to run the http-server on, digits only from 1 to 65535 (set to 3000 if `webapp-url` is localhost and port is not set)                                     | false    |               |
+| `port`                              | The port to run the http-server on, digits only from 1 to 65535 (set to 3000 if `webapp-url` is a local URL and port is not set)                                     | false    |               |
 | `regexp-error`                      | Regular expression pattern to <a href="#filter-note" aria-describedby="footnotes-label" role="doc-noteref">filter<sup>1</sup></a> matching parts from error logs   | false    |               |
 | `regexp-info`                       | Regular expression pattern to <a href="#filter-note" aria-describedby="footnotes-label" role="doc-noteref">filter<sup>1</sup></a> matching parts from info logs    | false    |               |
 | `regexp-verbose`                    | Regular expression pattern to <a href="#filter-note" aria-describedby="footnotes-label" role="doc-noteref">filter<sup>1</sup></a> matching parts from verbose logs | false    |               |
@@ -141,6 +141,12 @@ The action opens `webapp-url`, runs the pre-script, and starts collecting consol
 | `validate-status`                   | Whether to validate the HTTP response status code before log collection. Set to `false` to disable.                                                                | false    | true          |
 | `wait-time`                         | The wait time before capturing logs (in milliseconds)                                                                                                              | false    | 2500          |
 | <a id="webapp-url"></a>`webapp-url` | The URL of the web application                                                                                                                                     | true     |               |
+
+### Local URLs
+
+The action decides once, in its first step, whether `webapp-url` is local. A URL is local when it uses plain `http://` and its host is `localhost`, `127.0.0.1` or `[::1]`, optionally followed by a port and a path (`http://localhost:8080/page`). The scheme and host are case-insensitive, so `HTTP://LOCALHOST` is local as well.
+
+For a local URL the action requires `artifact-name`, downloads that artifact into `app/` and serves it with http-server on `port` (3000 when not set; a port inside the URL is replaced by it). `https://localhost` is not local, because http-server only serves plain http, and neither is a host that merely starts with `localhost`, such as `http://localhost.example.com`.
 
 ### HTTP status code validation
 
