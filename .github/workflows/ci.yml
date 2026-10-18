@@ -53,6 +53,13 @@ jobs:
     uses: ./.github/workflows/_fail_missing-artifact-name.yml
     secrets: inherit
 
+  fail-pre-script-error:
+    if: github.event_name == 'pull_request' && contains(fromJSON('["opened","reopened","synchronize","closed"]'), github.event.action)
+    permissions:
+      pull-requests: write
+    uses: ./.github/workflows/_fail_pre-script-error.yml
+    secrets: inherit
+
   pass-all-inputs:
     if: github.event_name == 'pull_request' && contains(fromJSON('["opened","reopened","synchronize","closed"]'), github.event.action)
     permissions:
@@ -125,6 +132,7 @@ jobs:
       - fail-all-defaults
       - fail-http-status-404
       - fail-missing-artifact-name
+      - fail-pre-script-error
       - pass-all-inputs
       - pass-external-login-pre-script
       - pass-http-status-no-validate
