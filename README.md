@@ -15,6 +15,7 @@ issues arise as early as possible - especially when the pull request was opened 
 ### Dependencies
 This action uses [http-server](https://www.npmjs.com/package/http-server) to serve the web application (only when `webapp-url` is a [local URL](#local-urls)) and [playwright](https://www.npmjs.com/package/playwright) to capture the console logs.
 Both are installed from the lockfile of this action (`npm ci --omit=dev`), so the versions are pinned and nothing is fetched at run time beyond that and the Chromium browser, which is cached between runs.
+The action does not check out your repository, that is up to your workflow. It only needs your files for [`pre-script-path`](#example-with-a-login-pre-script), because the script is read from your workspace: add `actions/checkout` before the action then, or it stops at the start and asks you for it.
 Furthermore, thanks to [thollander/actions-comment-pull-request](https://github.com/thollander/actions-comment-pull-request) for the comment functionality.
 
 ## Usage
@@ -100,9 +101,12 @@ export default async function loginAndCapture({page, startCapture}) {
 }
 ```
 
-Then reference it from the workflow:
+Then reference it from the workflow. The script is read from your workspace and the action does not check out your repository, so check it out in the job before the action:
 
 ```yaml
+- name: Checkout code
+  uses: actions/checkout@v4
+
 - name: Capture Console Logs
   uses: Primajin/webapp-console-log-action@v1
   with:
@@ -120,6 +124,13 @@ Then reference it from the workflow:
 
 The action opens `webapp-url`, runs the pre-script, and starts collecting console output. Call `startCapture()` inside the script if you want to begin collecting before the script ends. In the example above, the script proves login succeeded by waiting for the secure-area success message and the Logout link after the redirect. The public demo site can emit unrelated `ERR_NAME_NOT_RESOLVED` resource errors in CI, so the workflow filters those out. See [docs/pre-scripts.md](docs/pre-scripts.md) for the full contract.
 
+## Migrating to v2
+v2 no longer runs `actions/checkout` inside the action. A second checkout re-checked out your commit and cleaned untracked files, which could delete build output your job had produced in the workspace.
+
+- **What breaks:** workflows that set `pre-script-path` without their own `actions/checkout` step before the action. The pre-script was only found because v1 checked out the repository itself. With v2 the action stops at its start with the error `pre-script-path ... does not point to an existing file ... add an actions/checkout step before it, or fix the path`.
+- **The fix:** add `- uses: actions/checkout@v4` before the action (or point `pre-script-path` to a file that exists in the workspace at that moment, for example one you created in an earlier step) and change `@v1` to `@v2`.
+- **What does not change:** nothing else. Workflows without `pre-script-path` need no change, and neither do inputs, outputs and the comment.
+
 ## Inputs
 | Input                               | Description                                                                                                                                                        | Required | Default       |
 |-------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|---------------|
@@ -130,7 +141,7 @@ The action opens `webapp-url`, runs the pre-script, and starts collecting consol
 | `min-log-level`                     | The minimum log level to capture (verbose, info, warning, error)                                                                                                   | false    | verbose       |
 | `negative-statuses`                 | Comma-separated list of HTTP status codes that explicitly fail the action (e.g. `"404,500"`). Any code not in `positive-statuses` also fails when validation is on. | false    |               |
 | `positive-statuses`                 | Comma-separated list of HTTP status codes considered successful (e.g. `"200,201"`). Defaults to `200` when not set.                                                | false    |               |
-| `pre-script-path`                   | Path to a JavaScript module in `GITHUB_WORKSPACE` that prepares the app before console capture begins                                                              | false    |               |
+| `pre-script-path`                   | Path to a JavaScript module in `GITHUB_WORKSPACE` that prepares the app before console capture begins (your job needs `actions/checkout` before the action)        | false    |               |
 | `pre-script-timeout`                | Timeout for the pre-script in milliseconds                                                                                                                         | false    | 30000         |
 | `port`                              | The port to run the http-server on, digits only from 1 to 65535 (set to 3000 if `webapp-url` is a local URL and port is not set)                                     | false    |               |
 | `regexp-error`                      | Regular expression pattern to <a href="#filter-note" aria-describedby="footnotes-label" role="doc-noteref">filter<sup>1</sup></a> matching parts from error logs   | false    |               |
