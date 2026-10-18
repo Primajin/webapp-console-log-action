@@ -23,6 +23,8 @@ The file referenced by `pre-script-path` must export a default async function. T
 
 A script that cannot be loaded (missing file, syntax error, no default export) fails the action with `Failed to execute pre-script "<path>": ...`, the same prefix as an error thrown or a timeout while it runs.
 
+A failing pre-script does not stop the later steps of the action. The action writes an empty console output, posts the comment with `Pre-script failed: <message>` (prefixed with the cross mark when `show-emoji` is on) and then fails the job, so the real error is visible in the pull request.
+
 ## Credentials
 
 Use workflow `env` values or secrets for credentials and read them from `process.env` inside the pre-script.

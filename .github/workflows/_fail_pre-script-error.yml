@@ -1,0 +1,73 @@
+name: "Negative Test - failing pre-script"
+
+on:
+  workflow_call:
+
+permissions:
+  pull-requests: write
+
+jobs:
+  fail:
+    runs-on: ubuntu-latest
+    name: Should fail - pre-script throws, the comment still reports why
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Create fake App
+        run: |
+          cat > index.html << EOF
+          <!DOCTYPE html>
+          <html>
+          <head>
+          <title>New Page</title>
+          <link rel="icon" href="data:,">
+          </head>
+          <body>
+              <h1>Hello, World!</h1>
+          </body>
+          </html>
+          EOF
+
+      - name: Upload index.html
+        uses: actions/upload-artifact@v7
+        with:
+          name: index-html-fail-pre-script-error
+          path: index.html
+
+      - name: Use WebApp Console Log Action
+        id: webapp_console_log
+        uses: ./
+        with:
+          artifact-name: index-html-fail-pre-script-error
+          comment-tag: fail-pre-script-error
+          headline: Should fail - pre-script throws
+          pre-script-path: .github/scripts/failing-pre-script.js
+          wait-time: 5
+          webapp-url: 'http://localhost'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: Check that the action failed and its comment names the pre-script failure
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEADLINE: Should fail - pre-script throws
+          OUTCOME: ${{ steps.webapp_console_log.outcome }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "The action step did not fail (outcome=$OUTCOME), failing the job"
+            exit 1
+          fi
+          echo "The action step failed as expected, now checking the comment it posted"
+          comment=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" --paginate --jq ".[] | select(.body | contains(\"# ${HEADLINE}\")) | .body")
+          echo "$comment"
+          if [[ "$comment" != *"Pre-script failed: Simulated pre-script failure"* ]]; then
+            echo "The comment does not contain the pre-script failure message, failing the job"
+            exit 1
+          fi
+          echo "The comment reports the pre-script failure, marking job as success"

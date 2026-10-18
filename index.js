@@ -117,12 +117,26 @@ const startCapture = () => {
 	shouldCaptureMessages = true;
 };
 
+/**
+ Ends the run early: the later action steps still need their input files, so write them empty,
+ close the browser and export why the action has to fail (the markdown output shows the reason).
+ @param {string} reason - Why the action fails, as shown in the comment (without any emoji).
+ */
+const failEarly = async reason => {
+	await fs.writeFile('console_output.json', JSON.stringify({}, null, 2));
+	await fs.writeFile('capture_stats.json', JSON.stringify({totalObserved: 0}, null, 2));
+	await browser.close();
+	exportVariable('SHOULD_FAIL_ACTION', 'true');
+	exportVariable('SHOULD_FAIL_REASON', reason);
+};
+
 const response = await page.goto(captureUrl);
 const statusCode = response ? response.status() : 0;
 const {ok: statusOk, reason: statusReason} = validateStatusCode(statusCode);
 
-if (statusOk) {
-	if (process.env.PRE_SCRIPT_PATH) {
+let preScriptError;
+if (statusOk && process.env.PRE_SCRIPT_PATH) {
+	try {
 		const captureStartedByPreScript = await runPreScript({
 			browser,
 			context,
@@ -133,8 +147,17 @@ if (statusOk) {
 		if (!captureStartedByPreScript) {
 			startCapture();
 		}
+	} catch (error) {
+		// A failing pre-script (load error, throw, timeout) must not crash this script: the later steps still need their files
+		preScriptError = error;
 	}
+}
 
+if (preScriptError) {
+	// The full error (with the "Failed to execute pre-script" prefix and stack) goes to the log, the comment gets the cause without the prefix
+	console.error(preScriptError);
+	await failEarly(`Pre-script failed: ${preScriptError.cause?.message ?? preScriptError.message}`);
+} else if (statusOk) {
 	await page.waitForTimeout(Number(waitTime)); // Wait for the specified time
 
 	console.log(' ');
@@ -161,9 +184,5 @@ if (statusOk) {
 	console.log(' ');
 } else {
 	console.error(`HTTP status validation failed: ${statusReason}`);
-	await fs.writeFile('console_output.json', JSON.stringify({}, null, 2));
-	await fs.writeFile('capture_stats.json', JSON.stringify({totalObserved: 0}, null, 2));
-	await browser.close();
-	exportVariable('SHOULD_FAIL_ACTION', 'true');
-	exportVariable('SHOULD_FAIL_REASON', statusReason);
+	await failEarly(statusReason);
 }
