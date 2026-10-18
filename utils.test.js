@@ -281,6 +281,14 @@ describe('buildCaptureUrl', () => {
 		expect(buildCaptureUrl('http://localhost/nonexistent-page.html', '3001')).toBe('http://localhost:3001/nonexistent-page.html');
 	});
 
+	test('sets the port on every local form of the URL', async () => {
+		const {buildCaptureUrl} = await import('./utils.js');
+		expect(buildCaptureUrl('HTTP://LOCALHOST', '3000')).toBe('http://localhost:3000/');
+		expect(buildCaptureUrl('http://127.0.0.1', '3000')).toBe('http://127.0.0.1:3000/');
+		expect(buildCaptureUrl('http://[::1]', '3000')).toBe('http://[::1]:3000/');
+		expect(buildCaptureUrl('http://[::1]:8080/a', '3001')).toBe('http://[::1]:3001/a');
+	});
+
 	test('replaces a port that is already in the URL', async () => {
 		const {buildCaptureUrl} = await import('./utils.js');
 		expect(buildCaptureUrl('http://localhost:8080/a', '3000')).toBe('http://localhost:3000/a');
