@@ -211,6 +211,57 @@ describe('index.js', () => {
 		expect(fs.writeFile).toHaveBeenCalledWith('console_output.json', JSON.stringify({info: ['Captured during pre-script']}, null, 2));
 	});
 
+	test('should report a failing pre-script instead of crashing and write empty output files', async () => {
+		vi.stubEnv('PRE_SCRIPT_PATH', './login.js');
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		page.goto.mockImplementation(async () => {
+			consoleListener({type: () => 'log', text: () => 'Ignored before capture'});
+		});
+		vi.mocked(runPreScript).mockRejectedValue(new Error('Failed to execute pre-script "./login.js": boom', {cause: new Error('boom')}));
+
+		await expect(import('./index.js')).resolves.toBeDefined();
+
+		expect(fs.writeFile).toHaveBeenCalledWith('console_output.json', JSON.stringify({}, null, 2));
+		expect(fs.writeFile).toHaveBeenCalledWith('capture_stats.json', JSON.stringify({totalObserved: 0}, null, 2));
+		expect(browser.close).toHaveBeenCalledTimes(1);
+		expect(process.env.SHOULD_FAIL_ACTION).toBe('true');
+		expect(process.env.SHOULD_FAIL_REASON).toBe('Pre-script failed: boom');
+		expect(console.error).toHaveBeenCalledWith(expect.objectContaining({message: expect.stringContaining('boom')}));
+	});
+
+	test('should fall back to the error message when the pre-script error has no cause', async () => {
+		vi.stubEnv('PRE_SCRIPT_PATH', './login.js');
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		vi.mocked(runPreScript).mockRejectedValue(new Error('no cause here'));
+
+		await import('./index.js');
+
+		expect(process.env.SHOULD_FAIL_REASON).toBe('Pre-script failed: no cause here');
+	});
+
+	test('should not wait for the capture window when the pre-script fails', async () => {
+		vi.stubEnv('PRE_SCRIPT_PATH', './login.js');
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		vi.mocked(runPreScript).mockRejectedValue(new Error('timed out'));
+
+		await import('./index.js');
+
+		expect(page.waitForTimeout).not.toHaveBeenCalled();
+	});
+
+	test('should not report a pre-script failure when the pre-script succeeds', async () => {
+		vi.stubEnv('PRE_SCRIPT_PATH', './login.js');
+		vi.stubEnv('SHOULD_FAIL_REASON', '');
+		page.waitForTimeout.mockImplementation(async () => {
+			consoleListener({type: () => 'log', text: () => 'Captured after pre-script'});
+		});
+
+		await import('./index.js');
+
+		expect(process.env.SHOULD_FAIL_REASON).toBe('');
+		expect(fs.writeFile).toHaveBeenCalledWith('console_output.json', JSON.stringify({info: ['Captured after pre-script']}, null, 2));
+	});
+
 	test('should write totalObserved 0 when there are no messages at all', async () => {
 		await import('./index.js');
 
