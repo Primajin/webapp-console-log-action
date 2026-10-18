@@ -14,6 +14,7 @@ issues arise as early as possible - especially when the pull request was opened 
 
 ### Dependencies
 This action uses [http-server](https://www.npmjs.com/package/http-server) to serve the web application (only when passing `localhost` as input, [see details below](#webapp-url)) and [playwright](https://www.npmjs.com/package/playwright) to capture the console logs.
+Both are installed from the lockfile of this action (`npm ci --omit=dev`), so the versions are pinned and nothing is fetched at run time beyond that and the Chromium browser, which is cached between runs.
 Furthermore, thanks to [thollander/actions-comment-pull-request](https://github.com/thollander/actions-comment-pull-request) for the comment functionality.
 
 ## Usage
@@ -131,7 +132,7 @@ The action opens `webapp-url`, runs the pre-script, and starts collecting consol
 | `positive-statuses`                 | Comma-separated list of HTTP status codes considered successful (e.g. `"200,201"`). Defaults to `200` when not set.                                                | false    |               |
 | `pre-script-path`                   | Path to a JavaScript module in `GITHUB_WORKSPACE` that prepares the app before console capture begins                                                              | false    |               |
 | `pre-script-timeout`                | Timeout for the pre-script in milliseconds                                                                                                                         | false    | 30000         |
-| `port`                              | The port to run the http-server on (set to 3000 if `webapp-url` is localhost and port is not set)                                                                  | false    |               |
+| `port`                              | The port to run the http-server on, digits only from 1 to 65535 (set to 3000 if `webapp-url` is localhost and port is not set)                                     | false    |               |
 | `regexp-error`                      | Regular expression pattern to <a href="#filter-note" aria-describedby="footnotes-label" role="doc-noteref">filter<sup>1</sup></a> matching parts from error logs   | false    |               |
 | `regexp-info`                       | Regular expression pattern to <a href="#filter-note" aria-describedby="footnotes-label" role="doc-noteref">filter<sup>1</sup></a> matching parts from info logs    | false    |               |
 | `regexp-verbose`                    | Regular expression pattern to <a href="#filter-note" aria-describedby="footnotes-label" role="doc-noteref">filter<sup>1</sup></a> matching parts from verbose logs | false    |               |
