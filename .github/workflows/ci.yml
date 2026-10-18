@@ -60,6 +60,15 @@ jobs:
     uses: ./.github/workflows/_fail_pre-script-error.yml
     secrets: inherit
 
+  fail-pre-script-without-checkout:
+    if: github.event_name == 'pull_request' && contains(fromJSON('["opened","reopened","synchronize","closed"]'), github.event.action)
+    permissions:
+      actions: read
+      checks: read
+      pull-requests: write
+    uses: ./.github/workflows/_fail_pre-script-without-checkout.yml
+    secrets: inherit
+
   pass-all-inputs:
     if: github.event_name == 'pull_request' && contains(fromJSON('["opened","reopened","synchronize","closed"]'), github.event.action)
     permissions:
@@ -140,6 +149,7 @@ jobs:
       - fail-http-status-404
       - fail-missing-artifact-name
       - fail-pre-script-error
+      - fail-pre-script-without-checkout
       - pass-all-inputs
       - pass-external-login-pre-script
       - pass-http-status-no-validate
