@@ -1,5 +1,12 @@
 import {spawnSync} from 'node:child_process';
-import {mkdtempSync, readFileSync, rmSync} from 'node:fs';
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from 'node:fs';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
@@ -161,5 +168,131 @@ describe('action.yml local steps', () => {
 			const step = actionYaml.split('\n    - ').find(candidate => candidate.startsWith(`name: ${stepName}\n`));
 			expect(step, stepName).toContain('if: steps.set-port.outputs.is-local == \'true\'');
 		}
+	});
+});
+
+describe('action.yml pre-script guard step', () => {
+	const checkPreScriptScript = getRunScript('check-pre-script');
+	const workspace = path.join(workDirectory, 'workspace');
+	mkdirSync(path.join(workspace, '.github', 'scripts'), {recursive: true});
+	mkdirSync(path.join(workspace, 'a directory'));
+	writeFileSync(path.join(workspace, '.github', 'scripts', 'login.js'), 'export default () => {};\n');
+	writeFileSync(path.join(workspace, 'with spaces.js'), '');
+	writeFileSync(path.join(workspace, 'semi;colon.js'), '');
+
+	/**
+	 Runs the guard step with bash in the fake workspace.
+	 @param {string} preScriptPath - The pre-script-path input.
+	 @returns {{status: number, stdout: string}} - Exit status and stdout.
+	 */
+	const runGuard = preScriptPath => {
+		const result = spawnSync('bash', ['-c', checkPreScriptScript], {
+			encoding: 'utf8',
+			cwd: workDirectory,
+			env: {
+				PATH: process.env.PATH,
+				GITHUB_WORKSPACE: workspace,
+				PRE_SCRIPT_PATH: preScriptPath,
+			},
+		});
+		return {status: result.status, stdout: result.stdout};
+	};
+
+	test('does nothing without a pre-script path, whether or not a checkout happened', () => {
+		expect(runGuard('')).toEqual({status: 0, stdout: ''});
+	});
+
+	test('accepts a relative path to an existing file in the workspace', () => {
+		expect(runGuard('.github/scripts/login.js')).toEqual({status: 0, stdout: ''});
+		expect(runGuard('./with spaces.js').status).toBe(0);
+	});
+
+	test('accepts an absolute path to an existing file', () => {
+		expect(runGuard(path.join(workspace, '.github', 'scripts', 'login.js')).status).toBe(0);
+		// An absolute path is not looked up in the workspace, so it works outside of it too
+		const outside = path.join(workDirectory, 'outside.js');
+		writeFileSync(outside, '');
+		expect(runGuard(outside).status).toBe(0);
+	});
+
+	test('accepts a path with spaces', () => {
+		expect(runGuard('with spaces.js').status).toBe(0);
+		expect(runGuard(path.join(workspace, 'with spaces.js')).status).toBe(0);
+	});
+
+	test.each([
+		'.github/scripts/missing.js',
+		'missing.js',
+		'../workspace/../nope.js',
+	])('fails with a pointer to actions/checkout when the relative path "%s" does not exist', preScriptPath => {
+		const {status, stdout} = runGuard(preScriptPath);
+		expect(status).toBe(1);
+		expect(stdout).toMatch(/^::error::pre-script-path /v);
+		expect(stdout).toContain('add an actions/checkout step before it, or fix the path');
+		expect(stdout).toContain(`looked for ${workspace}/${preScriptPath}`);
+		expect(stdout.trimEnd().split('\n')).toHaveLength(1);
+	});
+
+	test('fails when an absolute path does not exist', () => {
+		const missing = path.join(workspace, 'not-checked-out.js');
+		const {status, stdout} = runGuard(missing);
+		expect(status).toBe(1);
+		expect(stdout).toContain(`looked for ${missing}`);
+		expect(stdout).toContain('actions/checkout');
+	});
+
+	test('fails when the path is a directory and not a file', () => {
+		for (const directory of ['a directory', '.github', path.join(workspace, 'a directory')]) {
+			const {status, stdout} = runGuard(directory);
+			expect(status, directory).toBe(1);
+			expect(stdout, directory).toContain('does not point to an existing file');
+		}
+	});
+
+	test('names a path with spaces in a way that is still readable', () => {
+		const {stdout} = runGuard('no such file.js');
+		expect(stdout).toContain(String.raw`no\ such\ file.js`);
+	});
+
+	test.each([
+		'$(touch injected)',
+		'`touch injected`',
+		'x; touch injected',
+		'x" && touch injected && "',
+		'$(touch injected).js',
+		'x\ntouch injected',
+		// eslint-disable-next-line no-template-curly-in-string -- a literal shell expansion, not a template
+		'${IFS}touch${IFS}injected',
+	])('never executes a path with shell metacharacters: %j', preScriptPath => {
+		for (const candidate of [preScriptPath, path.join(workspace, preScriptPath)]) {
+			const {status, stdout} = runGuard(candidate);
+			expect(status).toBe(1);
+			expect(stdout).toContain('::error::pre-script-path');
+			// Quoted onto a single line: a newline in the path must not start a second workflow command
+			expect(stdout.trimEnd().split('\n')).toHaveLength(1);
+		}
+
+		expect(existsSync(path.join(workspace, 'injected'))).toBe(false);
+		expect(existsSync(path.join(workDirectory, 'injected'))).toBe(false);
+	});
+
+	test('accepts an existing file whose name contains shell metacharacters without running anything', () => {
+		expect(runGuard('semi;colon.js').status).toBe(0);
+		expect(existsSync(path.join(workspace, 'colon.js'))).toBe(false);
+	});
+
+	test('runs before the steps that need Node and does not check out the repository', () => {
+		const stepNames = actionYaml.matchAll(/^ {4}- name: (?<name>.+?)(?: {2}#.*)?$/gmv).map(match => match.groups.name).toArray();
+		expect(stepNames.indexOf('Check that the pre-script exists')).toBeGreaterThan(stepNames.indexOf('Decide whether webapp-url is local and set the port'));
+		expect(stepNames.indexOf('Check that the pre-script exists')).toBeLessThan(stepNames.indexOf('Setup Node.js'));
+		expect(actionYaml).not.toContain('actions/checkout@');
+	});
+
+	test('hands the path to the step through env only', () => {
+		const step = actionYaml.split('\n    - ').find(candidate => candidate.includes('id: check-pre-script\n'));
+		/* eslint-disable no-template-curly-in-string -- the literal GitHub expression syntax is what is asserted */
+		expect(step).toContain('PRE_SCRIPT_PATH: ${{ inputs.pre-script-path }}');
+		expect(checkPreScriptScript).not.toContain('${{');
+		/* eslint-enable no-template-curly-in-string */
 	});
 });
