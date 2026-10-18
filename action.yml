@@ -127,8 +127,26 @@ runs:
       env:
         ARTIFACT_NAME: ${{ inputs.artifact-name }}
 
-    - name: Checkout Code
-      uses: actions/checkout@v7
+    # The action does not check out the caller's repository: the caller does that, and a second checkout would clean
+    # untracked files (such as build output) out of their workspace. The only thing read from the workspace is the pre-script.
+    - name: Check that the pre-script exists
+      id: check-pre-script
+      run: |
+        if [[ -n "$PRE_SCRIPT_PATH" ]]; then
+          if [[ "$PRE_SCRIPT_PATH" == /* ]]; then
+            script_path="$PRE_SCRIPT_PATH"
+          else
+            script_path="$GITHUB_WORKSPACE/$PRE_SCRIPT_PATH"
+          fi
+          if [[ ! -f "$script_path" ]]; then
+            # %q keeps the path on one line, so it cannot smuggle in further workflow commands
+            printf '::error::pre-script-path %q does not point to an existing file (looked for %q). This action does not check out your repository: add an actions/checkout step before it, or fix the path.\n' "$PRE_SCRIPT_PATH" "$script_path"
+            exit 1
+          fi
+        fi
+      shell: bash
+      env:
+        PRE_SCRIPT_PATH: ${{ inputs.pre-script-path }}
 
     - name: Setup Node.js
       uses: actions/setup-node@v7
