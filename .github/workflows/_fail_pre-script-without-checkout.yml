@@ -1,0 +1,80 @@
+name: "Negative Test - pre-script without a checkout"
+
+on:
+  workflow_call:
+
+permissions:
+  actions: read
+  checks: read
+  pull-requests: write
+
+jobs:
+  fail:
+    runs-on: ubuntu-latest
+    name: Should fail early - pre-script-path is set but the repository was not checked out
+    steps:
+      # The repository goes to a subdirectory, only so that `uses: ./action-src` can find the action.
+      # The workspace root stays empty, which is what a caller that forgot actions/checkout has.
+      - name: Check out the action into a subdirectory only
+        uses: actions/checkout@v7
+        with:
+          path: action-src
+
+      - name: Use WebApp Console Log Action
+        id: webapp_console_log
+        uses: ./action-src
+        with:
+          comment-tag: fail-pre-script-without-checkout
+          headline: Should fail - pre-script without a checkout
+          pre-script-path: .github/scripts/the-internet-login.js
+          webapp-url: 'https://primajin.github.io/webapp-console-log-action/login-demo/login'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: Check that the action failed before it did anything else
+        if: always()
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.webapp_console_log.outcome }}
+        run: |
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "The action step did not fail (outcome=$OUTCOME), failing the job"
+            exit 1
+          fi
+          echo "The action step failed as expected, the next job checks that it names the missing checkout"
+
+  check-message:
+    needs: fail
+    runs-on: ubuntu-latest
+    name: Should name the missing checkout in the error annotation of the failed step
+    steps:
+      # The annotation of a step is only final once its job has finished, hence a second job.
+      - name: Check the error annotation of the first job
+        shell: bash
+        env:
+          ATTEMPT: ${{ github.run_attempt }}
+          FAILING_JOB: Should fail early - pre-script-path is set but the repository was not checked out
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          job_id=$(gh api "repos/${REPO}/actions/runs/${RUN_ID}/attempts/${ATTEMPT}/jobs" --paginate | jq -r --arg name "$FAILING_JOB" '.jobs[] | select(.name | endswith($name)) | .id')
+          if [[ ! "$job_id" =~ ^[0-9]+$ ]]; then
+            echo "Could not find the id of the job \"${FAILING_JOB}\" (got: ${job_id}), failing the job"
+            exit 1
+          fi
+          annotations=''
+          for _ in 1 2 3 4 5 6; do
+            annotations=$(gh api "repos/${REPO}/check-runs/${job_id}/annotations" --paginate | jq -r '.[].message')
+            if [[ "$annotations" == *"actions/checkout"* ]]; then
+              break
+            fi
+            sleep 5
+          done
+          echo "$annotations"
+          if [[ "$annotations" != *"does not point to an existing file"* || "$annotations" != *"add an actions/checkout step before it"* ]]; then
+            echo "The annotations do not tell the user to add actions/checkout, failing the job"
+            exit 1
+          fi
+          echo "The failed step asks for an actions/checkout, marking job as success"
