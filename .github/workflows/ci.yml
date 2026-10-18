@@ -95,6 +95,13 @@ jobs:
     uses: ./.github/workflows/_pass_localhost-no-port.yml
     secrets: inherit
 
+  pass-local-url-variants:
+    if: github.event_name == 'pull_request' && contains(fromJSON('["opened","reopened","synchronize","closed"]'), github.event.action)
+    permissions:
+      pull-requests: write
+    uses: ./.github/workflows/_pass_local-url-variants.yml
+    secrets: inherit
+
   pass-logs-below-threshold:
     if: github.event_name == 'pull_request' && contains(fromJSON('["opened","reopened","synchronize","closed"]'), github.event.action)
     permissions:
@@ -137,6 +144,7 @@ jobs:
       - pass-external-login-pre-script
       - pass-http-status-no-validate
       - pass-http-status-positive-404
+      - pass-local-url-variants
       - pass-localhost-no-port
       - pass-logs-below-threshold
       - pass-page-emits-no-logs

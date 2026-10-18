@@ -1,0 +1,81 @@
+name: "Positive Test - local url variants"
+
+on:
+  workflow_call:
+
+permissions:
+  pull-requests: write
+
+jobs:
+  pass:
+    runs-on: ubuntu-latest
+    name: Should pass - ${{ matrix.name }} is served from the runner
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: upper-case
+            url: 'HTTP://LOCALHOST'
+          - name: loopback-ipv4
+            url: 'http://127.0.0.1'
+          - name: loopback-ipv6
+            url: 'http://[::1]'
+          - name: url-with-port-and-path
+            url: 'http://localhost:8080/index.html'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Create fake App with a console output
+        env:
+          VARIANT: ${{ matrix.name }}
+        run: |
+          cat > index.html << EOF
+          <!DOCTYPE html>
+          <html>
+          <head>
+          <title>New Page</title>
+          <link rel="icon" href="data:,">
+          </head>
+          <body>
+              <h1>Hello, World!</h1>
+              <script>
+                console.log('Served from the runner: $VARIANT');
+              </script>
+          </body>
+          </html>
+          EOF
+
+      - name: Upload index.html
+        uses: actions/upload-artifact@v7
+        with:
+          name: index-html-pass-local-url-${{ matrix.name }}
+          path: index.html
+
+      - name: Use WebApp Console Log Action
+        uses: ./
+        with:
+          artifact-name: index-html-pass-local-url-${{ matrix.name }}
+          comment-tag: pass-local-url-${{ matrix.name }}
+          headline: Should pass - local url ${{ matrix.name }}
+          max-log-level: error
+          wait-time: 5
+          webapp-url: ${{ matrix.url }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check that the comment holds the log of the served page
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEADLINE: Should pass - local url ${{ matrix.name }}
+          LOG_LINE: 'Served from the runner: ${{ matrix.name }}'
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          comment=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" --paginate --jq ".[] | select(.body | contains(\"# ${HEADLINE}\")) | .body")
+          echo "$comment"
+          if [[ "$comment" != *"$LOG_LINE"* ]]; then
+            echo "The comment does not contain the log of the served page, failing the job"
+            exit 1
+          fi
