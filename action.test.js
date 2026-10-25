@@ -284,7 +284,7 @@ describe('action.yml pre-script guard step', () => {
 	test('runs before the steps that need Node and does not check out the repository', () => {
 		const stepNames = actionYaml.matchAll(/^ {4}- name: (?<name>.+?)(?: {2}#.*)?$/gmv).map(match => match.groups.name).toArray();
 		expect(stepNames.indexOf('Check that the pre-script exists')).toBeGreaterThan(stepNames.indexOf('Decide whether webapp-url is local and set the port'));
-		expect(stepNames.indexOf('Check that the pre-script exists')).toBeLessThan(stepNames.indexOf('Setup Node.js'));
+		expect(stepNames.indexOf('Check that the pre-script exists')).toBeLessThan(stepNames.indexOf('Setup Playwright'));
 		expect(actionYaml).not.toContain('actions/checkout@');
 	});
 
