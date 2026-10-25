@@ -149,7 +149,7 @@ runs:
         PRE_SCRIPT_PATH: ${{ inputs.pre-script-path }}
 
     - name: Setup Playwright
-      uses: Primajin/.github/actions/setup-playwright@76ce83e1f3e5ab21d3ba48cb92d3752f6b623bb5 # branch of Primajin/.github#35; pin to the v1.1.0 release commit once it exists
+      uses: Primajin/.github/actions/setup-playwright@e935eed2767688c725dc9dcbbbec1a3be4abf715 # v1.1.0
       with:
         working-directory: ${{ github.action_path }}
 
