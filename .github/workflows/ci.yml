@@ -20,7 +20,6 @@ jobs:
       contents: read
     uses: Primajin/.github/.github/workflows/reusable-test.yml@v1
     with:
-      node-version: '22'
       coverage: true
       test-job-name: Make sure the unit tests pass.
     secrets:

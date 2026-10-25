@@ -10,7 +10,7 @@
     "exports": "./index.js",
     "sideEffects": true,
     "engines": {
-        "node": ">=22"
+        "node": ">=24"
     },
     "scripts": {
         "coverage": "vitest run --coverage",
