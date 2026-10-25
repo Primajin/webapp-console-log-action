@@ -27,10 +27,10 @@ inputs:
     required: false
     default: 'verbose'
   pre-script-path:
-    description: 'Path to a JavaScript pre-script that can log in or prepare the app before console capture'
+    description: 'Path to a JavaScript module, relative to the workspace or absolute, whose default export is an async function receiving { browser, context, page, startCapture, url }. Use it to log in or prepare the page before the capture, for example to dismiss a cookie banner. Console capture starts when it calls startCapture(), or when it returns if it never does. If it fails, the comment reports why and the action fails.'
     required: false
   pre-script-timeout:
-    description: 'Timeout in milliseconds for the pre-script'
+    description: 'Maximum time in milliseconds the pre-script may run before the action fails. Defaults to 30000.'
     required: false
     default: '30000'
   port:

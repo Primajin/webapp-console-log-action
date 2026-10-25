@@ -18,4 +18,4 @@ jobs:
 
 # Note: publishing a GitHub Action release to GitHub Marketplace is still a manual UI step.
 # GitHub documents this as the release-form checkbox "Publish this Action to the GitHub Marketplace".
-# We found no supported REST, GraphQL, or release-please option to automate it.
+# There is no supported REST, GraphQL, or release-please option to automate it.
