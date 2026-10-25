@@ -148,32 +148,10 @@ runs:
       env:
         PRE_SCRIPT_PATH: ${{ inputs.pre-script-path }}
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v7
+    - name: Setup Playwright
+      uses: Primajin/.github/actions/setup-playwright@e935eed2767688c725dc9dcbbbec1a3be4abf715 # v1.1.0
       with:
-        node-version: '24'
-
-    - name: Install dependencies
-      run: npm ci --omit=dev
-      shell: bash
-      working-directory: ${{ github.action_path }}
-
-    - name: Resolve Playwright version
-      id: playwright
-      run: echo "version=$(node -p "require('./package-lock.json').packages['node_modules/playwright'].version")" >> "$GITHUB_OUTPUT"
-      shell: bash
-      working-directory: ${{ github.action_path }}
-
-    - name: Cache Playwright browsers
-      uses: actions/cache@v6
-      with:
-        path: ~/.cache/ms-playwright
-        key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
-
-    - name: Setup Chromium
-      run: npx playwright install chromium
-      shell: bash
-      working-directory: ${{ github.action_path }}
+        working-directory: ${{ github.action_path }}
 
     - name: Download artifact
       if: steps.set-port.outputs.is-local == 'true'
