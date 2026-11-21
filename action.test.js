@@ -381,3 +381,35 @@ describe('action.yml url input and its webapp-url alias', () => {
 		expect(stepNames[0]).toBe('Check url');
 	});
 });
+
+describe('action.yml comment step', () => {
+	const formatScript = getRunScript('format_console_output');
+
+	test('posts through its own script and no longer through a third-party comment action', () => {
+		expect(actionYaml).not.toMatch(/uses: thollander/v);
+		const step = actionYaml.split('\n    - ').find(candidate => candidate.startsWith('name: Post Console Output to PR\n'));
+		expect(step).toContain('run: node post-comment.js');
+		expect(step).toContain('github.event_name == \'pull_request\'');
+	});
+
+	test('hands the script its inputs through env only', () => {
+		const step = actionYaml.split('\n    - ').find(candidate => candidate.startsWith('name: Post Console Output to PR\n'));
+		/* eslint-disable no-template-curly-in-string -- the literal GitHub expression syntax is what is asserted */
+		expect(step).toContain('COMMENT_MODE: ${{ inputs.comment-mode }}');
+		expect(step).toContain('COMMENT_TAG: ${{ inputs.comment-tag }}');
+		expect(step).toContain('GITHUB_TOKEN: ${{ env.GITHUB_TOKEN || github.token }}');
+		/* eslint-enable no-template-curly-in-string */
+	});
+
+	test('formats the logs without a headline, which the comment script adds', () => {
+		const directory = mkdtempSync(path.join(workDirectory, 'format-'));
+		writeFileSync(path.join(directory, 'console_output.json'), JSON.stringify({info: ['hello']}));
+		const result = spawnSync('bash', ['-c', formatScript], {
+			encoding: 'utf8',
+			cwd: directory,
+			env: {PATH: process.env.PATH, SHOW_EMOJI: 'false', SHOULD_FAIL_REASON: ''},
+		});
+		expect(result.status).toBe(0);
+		expect(readFileSync(path.join(directory, 'formatted_console_output.md'), 'utf8')).toBe('## Info\n```\nhello\n```\n\n');
+	});
+});

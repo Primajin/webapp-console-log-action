@@ -258,8 +258,8 @@ runs:
     - name: Format Console Output  # Step to format the console output into GitHub Flavored Markdown
       id: format_console_output
       run: |
-        # Create a markdown file and add a main heading
-        echo "# $HEADLINE" > formatted_console_output.md
+        # Start an empty markdown file; the comment step adds the headline, the marker and the footer around it
+        : > formatted_console_output.md
         # Check if there is an early-exit reason (e.g. HTTP status validation failure)
         if [ -n "$SHOULD_FAIL_REASON" ]; then
           if [ "$SHOW_EMOJI" = "true" ]; then
@@ -314,18 +314,21 @@ runs:
       shell: bash
       working-directory: ${{ github.action_path }}
       env:
-        HEADLINE: ${{ inputs.headline }}
         SHOULD_FAIL_REASON: ${{ env.SHOULD_FAIL_REASON }}
         SHOW_EMOJI: ${{ inputs.show-emoji }}
 
+    # Posted by this action's own script (no third-party comment action): it edits the comment of an earlier run in
+    # place, also one that an earlier version posted with thollander/actions-comment-pull-request.
     - name: Post Console Output to PR
       if: github.event_name == 'pull_request'
-      uses: thollander/actions-comment-pull-request@v3
-      with:
-        comment-tag: ${{ inputs.comment-mode != 'new' && inputs.comment-tag || '' }}
-        file-path: ${{ github.action_path }}/formatted_console_output.md
+      run: node post-comment.js
+      shell: bash
+      working-directory: ${{ github.action_path }}
       env:
-        GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }}
+        COMMENT_MODE: ${{ inputs.comment-mode }}
+        COMMENT_TAG: ${{ inputs.comment-tag }}
+        GITHUB_TOKEN: ${{ env.GITHUB_TOKEN || github.token }}
+        HEADLINE: ${{ inputs.headline }}
 
     - name: Check if action should fail
       run: |

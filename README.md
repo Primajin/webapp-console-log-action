@@ -16,7 +16,7 @@ issues arise as early as possible - especially when the pull request was opened 
 This action uses [http-server](https://www.npmjs.com/package/http-server) to serve the web application (only when `url` is a [local URL](#local-urls)) and [playwright](https://www.npmjs.com/package/playwright) to capture the console logs.
 Both are installed from the lockfile of this action (`npm ci --omit=dev`), so the versions are pinned and nothing is fetched at run time beyond that and the Chromium browser, which is cached between runs.
 The action does not check out your repository, that is up to your workflow. It only needs your files for [`pre-script-path`](#example-with-a-login-pre-script), because the script is read from your workspace: add `actions/checkout` before the action then, or it stops at the start and asks you for it.
-Furthermore, thanks to [thollander/actions-comment-pull-request](https://github.com/thollander/actions-comment-pull-request) for the comment functionality.
+The comment is posted with the GitHub API through [@actions/github](https://www.npmjs.com/package/@actions/github) (it used to be [thollander/actions-comment-pull-request](https://github.com/thollander/actions-comment-pull-request), thanks for that; a comment that this older version posted is still found and updated in place).
 
 ## Usage
 To use this action, include it in your GitHub Actions workflow:
@@ -135,7 +135,7 @@ v2 no longer runs `actions/checkout` inside the action. A second checkout re-che
 | Input                               | Description                                                                                                                                                        | Required | Default       |
 |-------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|---------------|
 | `artifact-name`                     | The name of the artifact to download (required if `url` is a [local URL](#local-urls))                                                                              | false    |               |
-| `comment-tag`                       | The tag to use for the comment, so that `comment-mode: update` can find it                                                                           | false    | console-log   |
+| `comment-tag`                       | The tag to use for the comment, so that `comment-mode: update` can find it (a hidden marker line in the comment; comments of earlier versions are found by their old marker). An empty tag always posts a new comment | false    | console-log   |
 | `comment-mode`                      | `update` edits the comment posted by an earlier run in place (found by `comment-tag`), `new` always posts a new comment                                            | false    | update        |
 | `headline`                          | The headline for the console logs                                                                                                                                  | false    | Console Logs  |
 | `max-log-level`                     | The maximum log level to allow (verbose, info, warning, error)                                                                                                     | false    | info          |

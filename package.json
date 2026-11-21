@@ -22,6 +22,10 @@
     "files": [
         "index.js",
         "action.yml",
+        "comment.js",
+        "comment-options.js",
+        "post-comment.js",
+        "pr-comment.js",
         "pre-script.js",
         "utils.js"
     ],
@@ -34,6 +38,7 @@
     ],
     "dependencies": {
         "@actions/core": "^3.0.1",
+        "@actions/github": "^9.1.1",
         "http-server": "^14.1.1",
         "playwright": "^1.63.0"
     },
