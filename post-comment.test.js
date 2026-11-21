@@ -33,7 +33,7 @@ const run = async (environment, comments = [], overrides = {}) => {
 	await postComment({
 		environment,
 		octokit,
-		pullRequest: {number: 3},
+		pullRequest: {number: 3, head: {sha: 'abcdef0123456789'}},
 		repo: {owner: 'o', repo: 'r'},
 		readFile: async () => '## Info\n```\nhello\n```\n',
 		log() {},
@@ -47,9 +47,42 @@ const created = octokit => octokit.rest.issues.createComment.mock.calls[0]?.[0].
 const updated = octokit => octokit.rest.issues.updateComment.mock.calls[0]?.[0];
 
 describe('postComment', () => {
-	test('posts a new comment with marker, headline and logs, using the defaults', async () => {
+	test('posts a new comment with marker, headline, logs and footer, using the defaults', async () => {
 		const {octokit} = await run({});
+		expect(created(octokit)).toBe('<!-- webapp-console-log-action:console-log -->\n# Console Logs\n## Info\n```\nhello\n```\n\n<sub>Commit abcdef0</sub>\n');
+	});
+
+	test('links the workflow run in the footer when the environment names it', async () => {
+		const {octokit} = await run({GITHUB_SERVER_URL: 'https://github.com', GITHUB_REPOSITORY: 'o/r', GITHUB_RUN_ID: '42'});
+		expect(created(octokit)).toContain('<sub>Commit abcdef0 · [workflow run](https://github.com/o/r/actions/runs/42)</sub>');
+	});
+
+	test('falls back to GITHUB_SHA when the pull request carries no head sha', async () => {
+		const {octokit} = await run({GITHUB_SHA: '1234567890abcdef'}, [], {pullRequest: {number: 3}});
+		expect(created(octokit)).toContain('<sub>Commit 1234567</sub>');
+	});
+
+	test('leaves the footer out with comment-footer false', async () => {
+		const {octokit} = await run({COMMENT_FOOTER: 'false'});
 		expect(created(octokit)).toBe('<!-- webapp-console-log-action:console-log -->\n# Console Logs\n## Info\n```\nhello\n```\n');
+	});
+
+	test.each(['false', '0', 'no', 'off'])('posts nothing with comment %s, and never reads the logs file', async value => {
+		const readFile = vi.fn();
+		const log = vi.fn();
+		const {octokit} = await run({COMMENT: value}, [{id: 8, body: '<!-- webapp-console-log-action:console-log -->\nold', user: bot}], {readFile, log});
+		expect(octokit.rest.issues.createComment).not.toHaveBeenCalled();
+		expect(octokit.rest.issues.updateComment).not.toHaveBeenCalled();
+		expect(octokit.paginate).not.toHaveBeenCalled();
+		expect(readFile).not.toHaveBeenCalled();
+		expect(log).toHaveBeenCalledWith(expect.stringContaining('comment is switched off'));
+	});
+
+	test('posts with comment true or unset', async () => {
+		const {octokit: explicit} = await run({COMMENT: 'true'});
+		const {octokit: unset} = await run({COMMENT: ''});
+		expect(created(explicit)).toBeDefined();
+		expect(created(unset)).toBeDefined();
 	});
 
 	test('uses the headline and the tag of the inputs', async () => {
@@ -97,7 +130,7 @@ describe('postComment', () => {
 		const earlier = '<!-- webapp-console-log-action:console-log -->\n# Console Logs\nold\n';
 		const {octokit} = await run({COMMENT_TAG: ''}, [{id: 8, body: earlier, user: bot}]);
 		expect(octokit.rest.issues.updateComment).not.toHaveBeenCalled();
-		expect(created(octokit)).toBe('# Console Logs\n## Info\n```\nhello\n```\n');
+		expect(created(octokit)).toBe('# Console Logs\n## Info\n```\nhello\n```\n\n<sub>Commit abcdef0</sub>\n');
 	});
 
 	test('posts nothing outside of a pull request', async () => {

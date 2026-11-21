@@ -5,10 +5,35 @@
 const MODES = ['update', 'new'];
 
 const DEFAULT_COMMENT_OPTIONS = {
+	comment: true,
+	footer: true,
 	mode: 'update',
 	tag: 'console-log',
 	headline: 'Console Logs',
 };
+
+const FALSE_VALUES = new Set(['false', '0', 'no', 'off']);
+const TRUE_VALUES = new Set(['true', '1', 'yes', 'on']);
+
+// Switches that are on by default: only the false values turn them off. Other
+// values keep the switch on, but a typo like "fasle" gets a warning.
+function resolveSwitch(name, input, fallback, warnings) {
+	const raw = String(input ?? '').trim().toLowerCase();
+	if (raw === '') {
+		return fallback;
+	}
+
+	if (FALSE_VALUES.has(raw)) {
+		return false;
+	}
+
+	if (!TRUE_VALUES.has(raw)) {
+		warnings.push(`Unknown ${name} "${String(input).trim()}"; use true or false. Using "${fallback}".`);
+		return fallback;
+	}
+
+	return true;
+}
 
 function resolveEnum({name, allowed, fallback}, input, warnings) {
 	const raw = String(input ?? '').trim().toLowerCase();
@@ -76,13 +101,15 @@ function resolveHeadline(canonical, alias, fallback, warnings) {
 /**
  Resolve the comment inputs.
  @param {(name: string) => string | undefined} getInput Reads one raw input value; undefined for an input that is not set at all.
- @returns {{options: {mode: 'update' | 'new', tag: string, markerTag: string, headline: string}, warnings: string[]}} The options and what to warn about.
+ @returns {{options: {comment: boolean, footer: boolean, mode: 'update' | 'new', tag: string, markerTag: string, headline: string}, warnings: string[]}} The options and what to warn about.
  */
 function resolveCommentOptions(getInput) {
 	const defaults = DEFAULT_COMMENT_OPTIONS;
 	const warnings = [];
 	const {tag, markerTag} = resolveTag(getInput('comment-tag'), defaults.tag, warnings);
 	const options = {
+		comment: resolveSwitch('comment', getInput('comment'), defaults.comment, warnings),
+		footer: resolveSwitch('comment-footer', getInput('comment-footer'), defaults.footer, warnings),
 		mode: resolveEnum({name: 'comment-mode', allowed: MODES, fallback: defaults.mode}, getInput('comment-mode'), warnings),
 		tag,
 		markerTag,

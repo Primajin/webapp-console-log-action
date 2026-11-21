@@ -11,6 +11,17 @@ const CONTENT_FILE = 'formatted_console_output.md';
 // The inputs reach this script as environment variables named like the input (COMMENT_TAG for comment-tag)
 const readInput = environment => name => environment[name.toUpperCase().replaceAll('-', '_')];
 
+// Where the footer points: the commit under review and this workflow run
+function buildFooter(pullRequest, environment) {
+	const {GITHUB_SERVER_URL: server, GITHUB_REPOSITORY: repository, GITHUB_RUN_ID: runId} = environment;
+	return {
+		sha: pullRequest.head?.sha ?? environment.GITHUB_SHA,
+		runUrl: server && repository && runId
+			? `${server}/${repository}/actions/runs/${runId}`
+			: undefined,
+	};
+}
+
 /**
  Post the console log comment to the pull request, or edit the one of an earlier run.
  @param {{environment?: object, octokit: object, pullRequest?: {number: number}, repo: {owner: string, repo: string}, readFile?: (file: string) => Promise<string>, log?: (message: string) => void, warn?: (message: string) => void}} dependencies What the run needs, injected so it can be tested.
@@ -35,11 +46,19 @@ async function postComment({
 		warn(message);
 	}
 
+	if (!options.comment) {
+		log('comment is switched off: nothing is posted to the pull request.');
+		return;
+	}
+
 	const content = await readFile(CONTENT_FILE);
+	const footer = options.footer ? buildFooter(pullRequest, environment) : null;
 	const result = await publishComment(octokit, {
 		...repo,
 		issueNumber: pullRequest.number,
-		render: () => renderComment({content, headline: options.headline, tag: options.markerTag}),
+		render: () => renderComment({
+			content, headline: options.headline, tag: options.markerTag, footer,
+		}),
 		isMarked: createMarkerMatcher(options.tag, options.markerTag),
 		// An empty tag has nothing to find the comment by: always a new one
 		mode: options.tag === '' ? 'new' : options.mode,

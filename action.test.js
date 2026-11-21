@@ -395,6 +395,8 @@ describe('action.yml comment step', () => {
 	test('hands the script its inputs through env only', () => {
 		const step = actionYaml.split('\n    - ').find(candidate => candidate.startsWith('name: Post Console Output to PR\n'));
 		/* eslint-disable no-template-curly-in-string -- the literal GitHub expression syntax is what is asserted */
+		expect(step).toContain('COMMENT: ${{ inputs.comment }}');
+		expect(step).toContain('COMMENT_FOOTER: ${{ inputs.comment-footer }}');
 		expect(step).toContain('COMMENT_HEADLINE: ${{ inputs.comment-headline }}');
 		expect(step).toContain('HEADLINE: ${{ inputs.headline }}');
 		expect(step).toContain('COMMENT_MODE: ${{ inputs.comment-mode }}');
@@ -408,6 +410,12 @@ describe('action.yml comment step', () => {
 		expect(getInputBlock('headline')).not.toContain('default:');
 		expect(getInputBlock('headline')).toContain('Deprecated alias of comment-headline');
 		expect(getInputBlock('comment-headline')).toContain('required: false');
+	});
+
+	test('defaults comment and comment-footer to true, which is the behaviour of a run without them', () => {
+		for (const name of ['comment', 'comment-footer']) {
+			expect(getInputBlock(name), name).toContain('default: \'true\'');
+		}
 	});
 
 	test('formats the logs without a headline, which the comment script adds', () => {

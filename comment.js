@@ -28,16 +28,34 @@ function createMarkerMatcher(tag, safeTag = tag) {
 }
 
 /**
- Render the comment: the marker line, the headline and what the format step wrote.
- @param {{content: string, headline: string, tag: string}} parts The finished markdown of the logs, the headline (plain text) and the tag.
+ Render the small footer: the commit under review and a link to the workflow run.
+ @param {{sha?: string, runUrl?: string} | null | undefined} footer Where the footer points; null for no footer.
+ @returns {string} The footer, or an empty string when there is nothing to show.
+ */
+function renderFooter(footer) {
+	const parts = [
+		footer?.sha ? `Commit ${footer.sha.slice(0, 7)}` : '',
+		footer?.runUrl ? `[workflow run](${footer.runUrl})` : '',
+	].filter(Boolean);
+	return parts.length > 0 ? `<sub>${parts.join(' · ')}</sub>\n` : '';
+}
+
+/**
+ Render the comment: the marker line, the headline, what the format step wrote and the footer.
+ @param {{content: string, headline: string, tag: string, footer?: {sha?: string, runUrl?: string} | null}} parts The finished markdown of the logs, the headline (plain text), the tag and the footer, if any.
  @returns {string} The body, starting with the marker line of the tag (none for an empty tag).
  */
-function renderComment({content, headline, tag}) {
+function renderComment({
+	content, headline, tag, footer,
+}) {
 	// An empty tag means every run posts a new comment, so there is nothing to find it by
 	const marker = tag === '' ? '' : `${commentMarker(tag)}\n`;
-	return `${marker}# ${headline}\n${content}`;
+	const footerText = renderFooter(footer);
+	// A blank line before the footer, or it would become part of the last paragraph of the logs
+	const body = footerText === '' ? content : `${content.trimEnd()}\n\n${footerText}`;
+	return `${marker}# ${headline}\n${body}`;
 }
 
 export {
-	commentMarker, createMarkerMatcher, legacyMarker, renderComment, startsWithMarker,
+	commentMarker, createMarkerMatcher, legacyMarker, renderComment, renderFooter, startsWithMarker,
 };

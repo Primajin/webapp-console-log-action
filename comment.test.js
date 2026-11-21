@@ -4,6 +4,7 @@ import {
 	createMarkerMatcher,
 	legacyMarker,
 	renderComment,
+	renderFooter,
 	startsWithMarker,
 } from './comment.js';
 
@@ -47,5 +48,36 @@ describe('comment markers', () => {
 		expect(isMarked(renderComment({content: '', headline: 'H', tag: 'a-b'}))).toBe(true);
 		expect(isMarked(`# H\n${legacyMarker('a/b')}`)).toBe(true);
 		expect(isMarked(`# H\n${legacyMarker('a-b')}`)).toBe(false);
+	});
+});
+
+describe('comment footer', () => {
+	test('shows the short commit and a link to the workflow run', () => {
+		expect(renderFooter({sha: 'abcdef0123456789', runUrl: 'https://github.com/o/r/actions/runs/1'}))
+			.toBe('<sub>Commit abcdef0 · [workflow run](https://github.com/o/r/actions/runs/1)</sub>\n');
+	});
+
+	test('shows what it has, and nothing when it has nothing', () => {
+		expect(renderFooter({sha: 'abcdef0123'})).toBe('<sub>Commit abcdef0</sub>\n');
+		expect(renderFooter({runUrl: 'https://x/y'})).toBe('<sub>[workflow run](https://x/y)</sub>\n');
+		expect(renderFooter({})).toBe('');
+		expect(renderFooter(null)).toBe('');
+		expect(renderFooter()).toBe('');
+	});
+
+	test('leaves a blank line between the logs and the footer, however the logs end', () => {
+		const footer = {sha: 'abcdef0'};
+		for (const content of ['text\n', 'text\n\n', '```\n\n\n']) {
+			const body = renderComment({
+				content, headline: 'H', tag: 't', footer,
+			});
+			expect(body.endsWith(`${content.trimEnd()}\n\n<sub>Commit abcdef0</sub>\n`), JSON.stringify(content)).toBe(true);
+		}
+	});
+
+	test('leaves the body as it was without a footer', () => {
+		expect(renderComment({
+			content: 'x\n', headline: 'H', tag: 't', footer: null,
+		})).toBe('<!-- webapp-console-log-action:t -->\n# H\nx\n');
 	});
 });

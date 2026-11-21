@@ -14,6 +14,14 @@ inputs:
     description: 'The tag to use for the comment, so that comment-mode update can find and edit it. An empty string always posts a new comment.'
     required: false
     default: 'console-log'
+  comment:
+    description: 'Whether to post the console logs to the pull request comment. false, 0, no and off switch it off: the logs are still captured, set as output and fail the action by log level, nothing is posted. Defaults to true.'
+    required: false
+    default: 'true'
+  comment-footer:
+    description: 'Add a small footer with the commit and a link to the workflow run to the comment. false, 0, no and off switch it off. Defaults to true.'
+    required: false
+    default: 'true'
   comment-headline:
     description: "The headline of the comment. Wins over the deprecated headline when both are set. Defaults to 'Console Logs'."
     required: false
@@ -152,6 +160,8 @@ runs:
         fi
       shell: bash
       env:
+        COMMENT: ${{ inputs.comment }}
+        COMMENT_FOOTER: ${{ inputs.comment-footer }}
         COMMENT_HEADLINE: ${{ inputs.comment-headline }}
         COMMENT_MODE: ${{ inputs.comment-mode }}
 
@@ -328,6 +338,8 @@ runs:
       shell: bash
       working-directory: ${{ github.action_path }}
       env:
+        COMMENT: ${{ inputs.comment }}
+        COMMENT_FOOTER: ${{ inputs.comment-footer }}
         COMMENT_HEADLINE: ${{ inputs.comment-headline }}
         COMMENT_MODE: ${{ inputs.comment-mode }}
         COMMENT_TAG: ${{ inputs.comment-tag }}

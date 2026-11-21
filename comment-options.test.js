@@ -12,7 +12,7 @@ describe('resolveCommentOptions', () => {
 	test('uses the defaults when nothing is set', () => {
 		const {options, warnings} = resolve();
 		expect(options).toEqual({
-			mode: 'update', tag: 'console-log', markerTag: 'console-log', headline: 'Console Logs',
+			comment: true, footer: true, mode: 'update', tag: 'console-log', markerTag: 'console-log', headline: 'Console Logs',
 		});
 		expect(options.tag).toBe(DEFAULT_COMMENT_OPTIONS.tag);
 		expect(warnings).toEqual([]);
@@ -47,5 +47,24 @@ describe('resolveCommentOptions', () => {
 	test('uses the headline input, trimmed', () => {
 		expect(resolve({headline: '  My logs '}).options.headline).toBe('My logs');
 		expect(resolve({headline: ' '.repeat(3)}).options.headline).toBe('Console Logs');
+	});
+
+	test.each(['comment', 'comment-footer'])('switches %s off for false, 0, no and off in any case', name => {
+		const key = name === 'comment' ? 'comment' : 'footer';
+		for (const value of ['false', '0', 'no', 'off', ' FALSE ', 'Off']) {
+			expect(resolve({[name]: value}).options[key], value).toBe(false);
+		}
+
+		for (const value of ['true', '1', 'yes', 'on', '', undefined]) {
+			const {options, warnings} = resolve({[name]: value});
+			expect(options[key], String(value)).toBe(true);
+			expect(warnings).toEqual([]);
+		}
+	});
+
+	test.each(['comment', 'comment-footer'])('warns about a typo in %s and keeps it on', name => {
+		const {options, warnings} = resolve({[name]: 'fasle'});
+		expect(options.comment && options.footer).toBe(true);
+		expect(warnings).toEqual([`Unknown ${name} "fasle"; use true or false. Using "true".`]);
 	});
 });
