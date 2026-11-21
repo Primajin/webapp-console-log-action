@@ -135,12 +135,12 @@ v2 no longer runs `actions/checkout` inside the action. A second checkout re-che
 | Input                               | Description                                                                                                                                                        | Required | Default       |
 |-------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|---------------|
 | `artifact-name`                     | The name of the artifact to download (required if `url` is a [local URL](#local-urls))                                                                              | false    |               |
-| `comment-tag`                       | The tag to use for the comment, so that `comment-mode: update` can find it (a hidden marker line in the comment; comments of earlier versions are found by their old marker). An empty tag always posts a new comment | false    | console-log   |
-| `comment-section`                   | Name of this call's section, so that several calls share ONE comment (the one of `comment-tag`): each call replaces only its own section and leaves the others as they are. Needs `comment-mode: update` and a `comment-tag`, otherwise it is ignored with a warning. See [Sections](#sections-in-one-comment) | false    |               |
 | `comment`                           | Whether to post the logs to the pull request. `false`, `0`, `no` and `off` skip the comment; the logs are still captured, set as the `console` output and fail the action by log level | false    | true          |
 | `comment-footer`                    | Add a small footer with the commit and a link to the workflow run to the comment. `false`, `0`, `no` and `off` leave it out                                         | false    | true          |
 | `comment-headline`                  | The headline of the comment. Wins over the deprecated `headline` when both are set                                                                                 | false    | Console Logs  |
 | `comment-mode`                      | `update` edits the comment posted by an earlier run in place (found by `comment-tag`), `new` always posts a new comment                                            | false    | update        |
+| `comment-section`                   | Name of this call's section, so that several calls share ONE comment (the one of `comment-tag`): each call replaces only its own section and leaves the others as they are. Needs `comment-mode: update` and a `comment-tag`, otherwise it is ignored with a warning. See [Sections](#sections-in-one-comment) | false    |               |
+| `comment-tag`                       | The tag to use for the comment, so that `comment-mode: update` can find it (a hidden marker line in the comment; comments of earlier versions are found by their old marker). An empty tag always posts a new comment | false    | console-log   |
 | `headline`                          | **Deprecated**, use `comment-headline`. Alias of `comment-headline`, kept so existing workflows keep working                                                       | false    |               |
 | `context-options`                   | JSON object with Playwright browser context options for the capture: `colorScheme` (`light`, `dark`, `no-preference`), `reducedMotion` (`reduce`, `no-preference`), `forcedColors` (`active`, `none`), `deviceScaleFactor` (above 0, at most 5), `isMobile`, `hasTouch`, `viewport` (`{width, height}`, up to 10000), `locale` (a language tag), `timezoneId` (an IANA time zone), `userAgent`. Invalid JSON, an unknown key or a wrong type fails the run. e.g. `{"colorScheme": "dark"}` | false    |               |
 | `max-log-level`                     | The maximum log level to allow (verbose, info, warning, error)                                                                                                     | false    | info          |
@@ -254,7 +254,7 @@ This project is licensed under the Unlicense license - see the [LICENSE](LICENSE
 
 ## Comment
 
-The comment will look something like this:
+The comment will look something like this (it ends with a small footer, `<sub>Commit abcdef0 · workflow run</sub>`, unless you set `comment-footer: false`):
 
 <table>
   <tr>
