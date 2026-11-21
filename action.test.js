@@ -400,6 +400,7 @@ describe('action.yml comment step', () => {
 		expect(step).toContain('COMMENT_HEADLINE: ${{ inputs.comment-headline }}');
 		expect(step).toContain('HEADLINE: ${{ inputs.headline }}');
 		expect(step).toContain('COMMENT_MODE: ${{ inputs.comment-mode }}');
+		expect(step).toContain('COMMENT_SECTION: ${{ inputs.comment-section }}');
 		expect(step).toContain('COMMENT_TAG: ${{ inputs.comment-tag }}');
 		expect(step).toContain('GITHUB_TOKEN: ${{ env.GITHUB_TOKEN || github.token }}');
 		/* eslint-enable no-template-curly-in-string */
@@ -416,6 +417,11 @@ describe('action.yml comment step', () => {
 		for (const name of ['comment', 'comment-footer']) {
 			expect(getInputBlock(name), name).toContain('default: \'true\'');
 		}
+	});
+
+	test('gives comment-section no default, so that a call owns the whole comment unless it names a section', () => {
+		expect(getInputBlock('comment-section')).toContain('required: false');
+		expect(getInputBlock('comment-section')).not.toContain('default:');
 	});
 
 	test('formats the logs without a headline, which the comment script adds', () => {

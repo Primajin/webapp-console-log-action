@@ -98,10 +98,65 @@ function resolveHeadline(canonical, alias, fallback, warnings) {
 	return fallback;
 }
 
+const MAX_SECTION_NAME_LENGTH = 80;
+const MAX_SECTION_SLUG_LENGTH = 60;
+
+// The title of a section: one line without control characters, so it is safe
+// as the title of a <details>.
+function sanitizeSectionName(input) {
+	return String(input ?? '')
+		.replaceAll(/\p{Control}/gv, ' ')
+		.replaceAll(/\s+/gv, ' ')
+		.trim();
+}
+
+// The part of a section marker that identifies it: lower case letters and digits
+// (of any language) with single dashes in between. Names that differ only in
+// case, spacing or punctuation are the same section.
+function slugifySectionName(name) {
+	return name
+		.toLowerCase()
+		.replaceAll(/[^\p{Letter}\p{Number}]+/gv, '-')
+		// Runs of other characters are one dash, so there is at most one at each end
+		.replace(/^-/v, '')
+		.replace(/-$/v, '')
+		.slice(0, MAX_SECTION_SLUG_LENGTH)
+		.replace(/-$/v, '');
+}
+
+// The comment-section input: null (the call owns the whole comment) or {name, slug}
+function resolveSection(input, {mode, tag}, warnings) {
+	const raw = String(input ?? '').trim();
+	if (raw === '') {
+		return null;
+	}
+
+	if (mode === 'new' || tag === '') {
+		const why = mode === 'new' ? 'with comment-mode new' : 'with an empty comment-tag';
+		warnings.push(`comment-section "${raw}" is ignored ${why}: a section is merged into the comment this action posted earlier (comment-mode update). Posting a whole new comment.`);
+		return null;
+	}
+
+	let name = sanitizeSectionName(raw);
+	if (name.length > MAX_SECTION_NAME_LENGTH) {
+		name = name.slice(0, MAX_SECTION_NAME_LENGTH).trim();
+		warnings.push(`The comment-section "${raw}" is longer than ${MAX_SECTION_NAME_LENGTH} characters and was cut to "${name}".`);
+	}
+
+	const slug = slugifySectionName(name);
+	if (slug === '') {
+		// Ignoring it would make this call own the whole comment and wipe the other sections
+		throw new Error(`The comment-section "${raw}" has no letters or digits to identify the section by; give it a name with at least one, or leave comment-section empty for a comment of its own.`);
+	}
+
+	return {name, slug};
+}
+
 /**
  Resolve the comment inputs.
  @param {(name: string) => string | undefined} getInput Reads one raw input value; undefined for an input that is not set at all.
- @returns {{options: {comment: boolean, footer: boolean, mode: 'update' | 'new', tag: string, markerTag: string, headline: string}, warnings: string[]}} The options and what to warn about.
+ @returns {{options: {comment: boolean, footer: boolean, mode: 'update' | 'new', tag: string, markerTag: string, headline: string, section: {name: string, slug: string} | null}, warnings: string[]}} The options and what to warn about.
+ @throws {Error} For a comment-section that has no letter or digit to identify it by.
  */
 function resolveCommentOptions(getInput) {
 	const defaults = DEFAULT_COMMENT_OPTIONS;
@@ -115,6 +170,7 @@ function resolveCommentOptions(getInput) {
 		markerTag,
 		headline: resolveHeadline(getInput('comment-headline'), getInput('headline'), defaults.headline, warnings),
 	};
+	options.section = resolveSection(getInput('comment-section'), options, warnings);
 	return {options, warnings};
 }
 
@@ -123,4 +179,5 @@ export {
 	MODES,
 	resolveCommentOptions,
 	sanitizeTag,
+	slugifySectionName,
 };

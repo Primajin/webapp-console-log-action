@@ -136,6 +136,7 @@ v2 no longer runs `actions/checkout` inside the action. A second checkout re-che
 |-------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|---------------|
 | `artifact-name`                     | The name of the artifact to download (required if `url` is a [local URL](#local-urls))                                                                              | false    |               |
 | `comment-tag`                       | The tag to use for the comment, so that `comment-mode: update` can find it (a hidden marker line in the comment; comments of earlier versions are found by their old marker). An empty tag always posts a new comment | false    | console-log   |
+| `comment-section`                   | Name of this call's section, so that several calls share ONE comment (the one of `comment-tag`): each call replaces only its own section and leaves the others as they are. Needs `comment-mode: update` and a `comment-tag`, otherwise it is ignored with a warning. See [Sections](#sections-in-one-comment) | false    |               |
 | `comment`                           | Whether to post the logs to the pull request. `false`, `0`, `no` and `off` skip the comment; the logs are still captured, set as the `console` output and fail the action by log level | false    | true          |
 | `comment-footer`                    | Add a small footer with the commit and a link to the workflow run to the comment. `false`, `0`, `no` and `off` leave it out                                         | false    | true          |
 | `comment-headline`                  | The headline of the comment. Wins over the deprecated `headline` when both are set                                                                                 | false    | Console Logs  |
@@ -210,6 +211,23 @@ Codes not listed in either set are treated as failures. Supported format: comma-
     </li>
   </ol>
 </footer>
+
+### Sections in one comment
+
+With `comment-section`, several calls of the action on the same pull request (for example one per page) share ONE comment instead of posting one each. Every call puts its logs into a collapsible section titled with the section name and replaces only that section the next time it runs; sections appear in the order of their first run, and names that differ only in case, spacing or punctuation are the same section. The headline and the footer belong to the whole comment, the latest call wins. Run the calls one after the other (for example as consecutive steps): parallel calls with the same tag can overwrite each other's update.
+
+```yaml
+- uses: Primajin/webapp-console-log-action@v1
+  with:
+    comment-section: Home
+    url: 'https://example.com/'
+- uses: Primajin/webapp-console-log-action@v1
+  with:
+    comment-section: Login
+    url: 'https://example.com/login'
+```
+
+`comment-section` is ignored, with a warning, for `comment-mode: new` and for an empty `comment-tag`, because both always post a whole new comment. A name without any letter or digit fails the run, since the section could not be told apart from the others.
 
 ## Outputs
 | Output    | Description              |

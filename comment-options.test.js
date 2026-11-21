@@ -1,5 +1,5 @@
 import {describe, expect, test} from 'vitest';
-import {DEFAULT_COMMENT_OPTIONS, resolveCommentOptions} from './comment-options.js';
+import {DEFAULT_COMMENT_OPTIONS, resolveCommentOptions, slugifySectionName} from './comment-options.js';
 
 /**
  Resolves options from a plain object of inputs.
@@ -12,7 +12,7 @@ describe('resolveCommentOptions', () => {
 	test('uses the defaults when nothing is set', () => {
 		const {options, warnings} = resolve();
 		expect(options).toEqual({
-			comment: true, footer: true, mode: 'update', tag: 'console-log', markerTag: 'console-log', headline: 'Console Logs',
+			comment: true, footer: true, mode: 'update', tag: 'console-log', markerTag: 'console-log', headline: 'Console Logs', section: null,
 		});
 		expect(options.tag).toBe(DEFAULT_COMMENT_OPTIONS.tag);
 		expect(warnings).toEqual([]);
@@ -66,5 +66,51 @@ describe('resolveCommentOptions', () => {
 		const {options, warnings} = resolve({[name]: 'fasle'});
 		expect(options.comment && options.footer).toBe(true);
 		expect(warnings).toEqual([`Unknown ${name} "fasle"; use true or false. Using "true".`]);
+	});
+});
+
+describe('comment-section', () => {
+	test('is none by default, also when blank', () => {
+		expect(resolve().options.section).toBeNull();
+		expect(resolve({'comment-section': ' '.repeat(3)}).options.section).toBeNull();
+	});
+
+	test('names the section and derives the slug that identifies it', () => {
+		const {options, warnings} = resolve({'comment-section': ' Home  Page '});
+		expect(options.section).toEqual({name: 'Home Page', slug: 'home-page'});
+		expect(warnings).toEqual([]);
+	});
+
+	test('treats names that differ only in case, spacing or punctuation as one section', () => {
+		const slugs = ['Home Page', 'home-page', '  HOME   page!! '].map(name => resolve({'comment-section': name}).options.section.slug);
+		expect(new Set(slugs)).toEqual(new Set(['home-page']));
+		expect(slugifySectionName('Über uns')).toBe('über-uns');
+	});
+
+	test('keeps a control character out of the title', () => {
+		expect(resolve({'comment-section': 'a\nb\tc'}).options.section.name).toBe('a b c');
+	});
+
+	test('cuts a name that is too long and says so', () => {
+		const {options, warnings} = resolve({'comment-section': 'a'.repeat(100)});
+		expect(options.section.name).toBe('a'.repeat(80));
+		expect(warnings).toHaveLength(1);
+		expect(warnings[0]).toContain('longer than 80 characters');
+	});
+
+	test('fails for a name with no letter or digit, since ignoring it would wipe the other sections', () => {
+		expect(() => resolve({'comment-section': '!!!'})).toThrow('has no letters or digits');
+	});
+
+	test('is ignored with a warning for comment-mode new', () => {
+		const {options, warnings} = resolve({'comment-section': 'Home', 'comment-mode': 'new'});
+		expect(options.section).toBeNull();
+		expect(warnings).toEqual([expect.stringContaining('comment-section "Home" is ignored with comment-mode new')]);
+	});
+
+	test('is ignored with a warning for an empty comment-tag, which always posts a new comment', () => {
+		const {options, warnings} = resolve({'comment-section': 'Home', 'comment-tag': ''});
+		expect(options.section).toBeNull();
+		expect(warnings).toEqual([expect.stringContaining('ignored with an empty comment-tag')]);
 	});
 });

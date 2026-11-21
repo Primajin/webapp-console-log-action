@@ -27,6 +27,61 @@ function createMarkerMatcher(tag, safeTag = tag) {
 	return body => startsWithMarker(body, commentMarker(safeTag)) || body.includes(legacyMarker(tag));
 }
 
+// The markers around a section; the slug is made of letters, digits and dashes
+// only (see comment-options.js), so it is safe inside an HTML comment.
+function sectionMarkers(tag, slug) {
+	return {
+		start: `<!-- webapp-console-log-action:${tag}:section:${slug} -->`,
+		end: `<!-- /webapp-console-log-action:${tag}:section:${slug} -->`,
+	};
+}
+
+const SLUG = /^[\p{Letter}\p{Number}\-]+$/v;
+
+// The sections of an earlier comment of the tag, in the order they are in:
+// [{slug, content}]. A start marker without its end marker, or with a slug that
+// is not one, is not a section (the text around sections is not kept), and of
+// two sections with the same slug only the first is kept.
+function parseSections(body, tag) {
+	const sections = [];
+	const prefix = `<!-- webapp-console-log-action:${tag}:section:`;
+	let from = 0;
+	for (;;) {
+		const start = body.indexOf(prefix, from);
+		if (start === -1) {
+			return sections;
+		}
+
+		const close = body.indexOf(' -->', start + prefix.length);
+		if (close === -1) {
+			return sections;
+		}
+
+		const slug = body.slice(start + prefix.length, close);
+		const contentStart = close + ' -->'.length;
+		const {end: endMarker} = sectionMarkers(tag, slug);
+		const end = SLUG.test(slug) ? body.indexOf(endMarker, contentStart) : -1;
+		if (end === -1) {
+			from = contentStart;
+			continue;
+		}
+
+		// A slug twice (a comment that was edited by hand): the first one counts
+		if (sections.every(section => section.slug !== slug)) {
+			sections.push({slug, content: body.slice(contentStart, end).trim()});
+		}
+
+		from = end + endMarker.length;
+	}
+}
+
+const escapeHtml = value =>
+	String(value)
+		.replaceAll('&', '&amp;')
+		.replaceAll('"', '&quot;')
+		.replaceAll('<', '&lt;')
+		.replaceAll('>', '&gt;');
+
 /**
  Render the small footer: the commit under review and a link to the workflow run.
  @param {{sha?: string, runUrl?: string} | null | undefined} footer Where the footer points; null for no footer.
@@ -40,14 +95,65 @@ function renderFooter(footer) {
 	return parts.length > 0 ? `<sub>${parts.join(' · ')}</sub>\n` : '';
 }
 
+// What a section call puts between its markers: one collapsible group titled with the
+// section name. It starts open, the logs are the point of the comment (and plain text, so
+// nothing jumps while it loads).
+function renderSectionContent(content, section) {
+	return `<details open>\n<summary><b>${escapeHtml(section.name)}</b></summary>\n\n${content.trim()}\n\n</details>\n`;
+}
+
+/**
+ Put one section into the comment of a tag: replace the section of the same slug
+ where it is, or add it after the others (the order is the order of first
+ insertion), and leave every other section as it was. The headline and the
+ footer are the frame of the comment and always come from the given frame; text
+ of the previous body outside of the sections is not kept.
+ @param {string | undefined} previousBody The body of the earlier comment of the tag (empty or undefined for none).
+ @param {string} tag The tag of the comment, as it is written into the markers.
+ @param {string} slug The slug of the section (letters, digits and dashes).
+ @param {string} sectionMarkdown What goes between the markers of the section.
+ @param {{headline: string, footer?: string}} frame The headline (plain text) and the rendered footer, if any.
+ @returns {string} The new body, starting with the marker line of the tag.
+ */
+// eslint-disable-next-line max-params -- the five pieces of a merge, in the order of the section markers
+function mergeSection(previousBody, tag, slug, sectionMarkdown, frame) {
+	const sections = typeof previousBody === 'string' ? parseSections(previousBody, tag) : [];
+	const next = {slug, content: sectionMarkdown.trim()};
+	const index = sections.findIndex(section => section.slug === slug);
+	if (index === -1) {
+		sections.push(next);
+	} else {
+		sections[index] = next;
+	}
+
+	const blocks = sections.map(section => {
+		const {start, end} = sectionMarkers(tag, section.slug);
+		return `${start}\n${section.content}\n${end}\n\n`;
+	});
+	return [
+		`${commentMarker(tag)}\n`,
+		`# ${frame.headline}\n\n`,
+		...blocks,
+		frame.footer ?? '',
+	].join('');
+}
+
 /**
  Render the comment: the marker line, the headline, what the format step wrote and the footer.
- @param {{content: string, headline: string, tag: string, footer?: {sha?: string, runUrl?: string} | null}} parts The finished markdown of the logs, the headline (plain text), the tag and the footer, if any.
+ With a section only this call's section is rendered, into the body of the earlier comment of the tag.
+ @param {{content: string, headline: string, tag: string, footer?: {sha?: string, runUrl?: string} | null, section?: {name: string, slug: string} | null, previousBody?: string}} parts The finished markdown of the logs, the headline (plain text), the tag, the footer, and for a section its name and slug and the body of the comment that is edited.
  @returns {string} The body, starting with the marker line of the tag (none for an empty tag).
  */
 function renderComment({
-	content, headline, tag, footer,
+	content, headline, tag, footer, section, previousBody,
 }) {
+	if (section) {
+		return mergeSection(previousBody, tag, section.slug, renderSectionContent(content, section), {
+			headline,
+			footer: renderFooter(footer),
+		});
+	}
+
 	// An empty tag means every run posts a new comment, so there is nothing to find it by
 	const marker = tag === '' ? '' : `${commentMarker(tag)}\n`;
 	const footerText = renderFooter(footer);
@@ -57,5 +163,5 @@ function renderComment({
 }
 
 export {
-	commentMarker, createMarkerMatcher, legacyMarker, renderComment, renderFooter, startsWithMarker,
+	commentMarker, createMarkerMatcher, legacyMarker, mergeSection, renderComment, renderFooter, startsWithMarker,
 };

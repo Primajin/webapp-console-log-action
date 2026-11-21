@@ -10,6 +10,9 @@ inputs:
   artifact-name:
     description: 'The name of the artifact to download'
     required: false
+  comment-section:
+    description: 'Name of this call''s section, to let several calls share ONE comment (the one of comment-tag): the comment holds one section per name, and a call replaces only its own section and leaves the others as they are. The headline and footer are shared (the latest call wins). Empty: this call owns the whole comment. Needs comment-mode update and a comment-tag, otherwise it is ignored with a warning. Calls must run one after the other: parallel calls can lose updates.'
+    required: false
   comment-tag:
     description: 'The tag to use for the comment, so that comment-mode update can find and edit it. An empty string always posts a new comment.'
     required: false
@@ -164,6 +167,7 @@ runs:
         COMMENT_FOOTER: ${{ inputs.comment-footer }}
         COMMENT_HEADLINE: ${{ inputs.comment-headline }}
         COMMENT_MODE: ${{ inputs.comment-mode }}
+        COMMENT_SECTION: ${{ inputs.comment-section }}
 
     - name: Check artifact name requirement
       if: steps.set-port.outputs.is-local == 'true'
@@ -342,6 +346,7 @@ runs:
         COMMENT_FOOTER: ${{ inputs.comment-footer }}
         COMMENT_HEADLINE: ${{ inputs.comment-headline }}
         COMMENT_MODE: ${{ inputs.comment-mode }}
+        COMMENT_SECTION: ${{ inputs.comment-section }}
         COMMENT_TAG: ${{ inputs.comment-tag }}
         GITHUB_TOKEN: ${{ env.GITHUB_TOKEN || github.token }}
         HEADLINE: ${{ inputs.headline }}

@@ -56,8 +56,8 @@ async function postComment({
 	const result = await publishComment(octokit, {
 		...repo,
 		issueNumber: pullRequest.number,
-		render: () => renderComment({
-			content, headline: options.headline, tag: options.markerTag, footer,
+		render: previousBody => renderComment({
+			content, headline: options.headline, tag: options.markerTag, footer, section: options.section, previousBody,
 		}),
 		isMarked: createMarkerMatcher(options.tag, options.markerTag),
 		// An empty tag has nothing to find the comment by: always a new one

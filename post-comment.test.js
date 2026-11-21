@@ -140,3 +140,86 @@ describe('postComment', () => {
 		expect(log).toHaveBeenCalledWith('Not a pull request: nothing to comment on.');
 	});
 });
+
+/**
+ A fake octokit that keeps the comments in memory, so that several runs can share them.
+ @returns {object} - The fake and its comment list.
+ */
+const statefulOctokit = () => {
+	const comments = [];
+	return {
+		comments,
+		paginate: vi.fn(async () => comments),
+		rest: {
+			users: {getAuthenticated: vi.fn(async () => ({data: {}}))},
+			issues: {
+				listComments: vi.fn(),
+				createComment: vi.fn(async ({body}) => {
+					comments.push({id: comments.length + 1, body, user: bot});
+					return {data: {id: comments.length}};
+				}),
+				updateComment: vi.fn(async ({comment_id: id, body}) => {
+					comments.find(comment => comment.id === id).body = body;
+					return {data: {id}};
+				}),
+			},
+		},
+	};
+};
+
+describe('postComment sections', () => {
+	const call = (octokit, environment, text) => postComment({
+		environment,
+		octokit,
+		pullRequest: {number: 3, head: {sha: 'abcdef0123'}},
+		repo: {owner: 'o', repo: 'r'},
+		readFile: async () => text,
+		log() {},
+		warn() {},
+	});
+
+	test('lets several calls share one comment, each replacing only its own section', async () => {
+		const octokit = statefulOctokit();
+		await call(octokit, {COMMENT_SECTION: 'Home'}, 'home logs v1\n');
+		await call(octokit, {COMMENT_SECTION: 'Login'}, 'login logs v1\n');
+		await call(octokit, {COMMENT_SECTION: 'Home'}, 'home logs v2\n');
+		expect(octokit.comments).toHaveLength(1);
+		const [{body}] = octokit.comments;
+		expect(body).toContain('home logs v2');
+		expect(body).not.toContain('home logs v1');
+		expect(body).toContain('login logs v1');
+		expect(body.indexOf('home logs v2')).toBeLessThan(body.indexOf('login logs v1'));
+	});
+
+	test('keeps sections of different tags in different comments', async () => {
+		const octokit = statefulOctokit();
+		await call(octokit, {COMMENT_SECTION: 'Home', COMMENT_TAG: 'a'}, 'a logs\n');
+		await call(octokit, {COMMENT_SECTION: 'Home', COMMENT_TAG: 'b'}, 'b logs\n');
+		expect(octokit.comments).toHaveLength(2);
+	});
+
+	test('ignores the section with comment-mode new, posts a whole comment and warns', async () => {
+		const octokit = statefulOctokit();
+		const warn = vi.fn();
+		await postComment({
+			environment: {COMMENT_SECTION: 'Home', COMMENT_MODE: 'new'},
+			octokit,
+			pullRequest: {number: 3},
+			repo: {owner: 'o', repo: 'r'},
+			readFile: async () => 'logs\n',
+			log() {},
+			warn,
+		});
+		expect(octokit.comments[0].body).not.toContain(':section:');
+		expect(warn).toHaveBeenCalledWith(expect.stringContaining('ignored with comment-mode new'));
+	});
+
+	test('turns a section into a section of the comment a whole-comment run posted earlier', async () => {
+		const octokit = statefulOctokit();
+		await call(octokit, {}, 'whole logs\n');
+		await call(octokit, {COMMENT_SECTION: 'Home'}, 'home logs\n');
+		expect(octokit.comments).toHaveLength(1);
+		expect(octokit.comments[0].body).toContain('home logs');
+		expect(octokit.comments[0].body).not.toContain('whole logs');
+	});
+});
