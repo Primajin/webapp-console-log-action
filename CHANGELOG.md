@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0](https://github.com/Primajin/webapp-console-log-action/compare/v2.0.0...v2.1.0) (2026-11-21)
+
+
+### Features
+
+* align inputs with screenshots-ci-action (comment-mode, comment-section, waits, context-options, aliases) ([#140](https://github.com/Primajin/webapp-console-log-action/issues/140)) ([3c8b915](https://github.com/Primajin/webapp-console-log-action/commit/3c8b9155d5711eee33b32869153fa3d39d3e3612))
+
+
+### Dependencies
+
+* update @vitest/coverage-v8, playwright, vitest ([2ae81af](https://github.com/Primajin/webapp-console-log-action/commit/2ae81af466a6ec89c617150fc29d39de18a8e477))
+
 ## [2.0.0](https://github.com/Primajin/webapp-console-log-action/compare/v1.8.7...v2.0.0) (2026-10-18)
 
 
