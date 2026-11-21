@@ -11,9 +11,13 @@ inputs:
     description: 'The name of the artifact to download'
     required: false
   comment-tag:
-    description: 'The tag to use for the comment - so it can be replaced, you may pass empty string to always post a new comment'
+    description: 'The tag to use for the comment, so that comment-mode update can find and edit it. An empty string always posts a new comment.'
     required: false
     default: 'console-log'
+  comment-mode:
+    description: 'update edits the comment this action posted earlier on the pull request (found by comment-tag) in place, new always posts a new comment.'
+    required: false
+    default: 'update'
   headline:
     description: 'The headline for the console logs comment'
     required: false
@@ -115,6 +119,16 @@ runs:
       env:
         INPUT_PORT: ${{ inputs.port }}
         WEBAPP_URL: ${{ inputs.webapp-url }}
+
+    - name: Check comment mode
+      run: |
+        if [[ "$COMMENT_MODE" != update && "$COMMENT_MODE" != new ]]; then
+          printf '::error::comment-mode must be update or new (got %q).\n' "$COMMENT_MODE"
+          exit 1
+        fi
+      shell: bash
+      env:
+        COMMENT_MODE: ${{ inputs.comment-mode }}
 
     - name: Check artifact name requirement
       if: steps.set-port.outputs.is-local == 'true'
@@ -286,7 +300,7 @@ runs:
       if: github.event_name == 'pull_request'
       uses: thollander/actions-comment-pull-request@v3
       with:
-        comment-tag: ${{ inputs.comment-tag }}
+        comment-tag: ${{ inputs.comment-mode != 'new' && inputs.comment-tag || '' }}
         file-path: ${{ github.action_path }}/formatted_console_output.md
       env:
         GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }}
