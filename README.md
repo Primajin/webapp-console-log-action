@@ -156,10 +156,19 @@ v2 no longer runs `actions/checkout` inside the action. A second checkout re-che
 | `show-emoji`                        | Whether to show emojis in the output                                                                                                                               | false    | true          |
 | `validate-status`                   | Whether to validate the HTTP response status code before log collection. Set to `false` to disable.                                                                | false    | true          |
 | `wait-time`                         | The wait time before capturing logs (in milliseconds)                                                                                                              | false    | 2500          |
+| `wait-until`                        | When to consider the navigation succeeded: `load`, `domcontentloaded`, `networkidle` or `commit` (the legacy Puppeteer values `networkidle0` and `networkidle2` map to `networkidle`). An unknown value logs a warning and uses the default. `wait-time` is waited on top of it | false    | load          |
+| `wait-for-selector`                 | Wait for this selector to be attached to the DOM before the capture ends (after the `pre-script-path` script, if any). If it does not appear within the timeout the error is logged and the capture goes on | false    |               |
+| `wait-for-selector-visible`         | Wait for the element to be visible, not only attached. Needs `wait-for-selector`; wins over `wait-for-selector-hidden`                                             | false    | false         |
+| `wait-for-selector-hidden`          | Wait for the element to be gone or hidden. Needs `wait-for-selector`                                                                                               | false    | false         |
+| `wait-for-selector-timeout`         | Maximum time to wait for the selector in milliseconds, `0` disables the timeout                                                                                    | false    | 30000         |
 | `url`                               | The URL of the web application. One of `url` and the deprecated `webapp-url` is required; `url` wins when both are set                                             | true*    |               |
 | <a id="webapp-url"></a>`webapp-url` | **Deprecated**, use `url`. Alias of `url`, kept so existing workflows keep working (the run logs a deprecation warning)                                            | false*   |               |
 
 \* Neither `url` nor `webapp-url` is marked `required` in `action.yml`, because either one satisfies the action. If both are empty the run fails at its first step with `url is required`.
+
+### Waiting for the page
+
+`wait-until` decides when the navigation counts as done. Its default is `load`, which is what the action always waited for; screenshots-ci-action defaults to `networkidle`, here the default is kept so that existing workflows behave as before. After the navigation (and the pre-script, if you set one) the action waits for `wait-for-selector` if you set it, then for `wait-time`. Console messages are captured throughout, so what the page logs while waiting is part of the comment. A selector that never shows up is logged and the capture goes on.
 
 ### Local URLs
 

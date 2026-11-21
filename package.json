@@ -27,7 +27,8 @@
         "post-comment.js",
         "pr-comment.js",
         "pre-script.js",
-        "utils.js"
+        "utils.js",
+        "wait.js"
     ],
     "keywords": [
         "github-action",

@@ -83,6 +83,26 @@ inputs:
     description: 'The wait time before capturing logs'
     required: false
     default: '2500'
+  wait-until:
+    description: "When to consider the navigation succeeded: load, domcontentloaded, networkidle or commit. Legacy Puppeteer values networkidle0 and networkidle2 are mapped to networkidle. An unknown value logs a warning and uses the default. Defaults to 'load' (what the action always waited for). wait-time is waited on top of it."
+    required: false
+    default: 'load'
+  wait-for-selector:
+    description: "Wait for the selector to be attached to the DOM before the capture ends, after the pre-script if there is one. Returns immediately if it already exists. If it doesn't appear within the timeout, the error is logged and the capture goes on. wait-time is waited on top of it."
+    required: false
+    default: ''
+  wait-for-selector-hidden:
+    description: 'Wait for the selected element to not be found in the DOM or to be hidden, i.e. have display: none or visibility: hidden CSS properties. Needs wait-for-selector.'
+    required: false
+    default: 'false'
+  wait-for-selector-visible:
+    description: 'Wait for the selected element to be present in DOM and to be visible, i.e. to not have display: none or visibility: hidden CSS properties. Needs wait-for-selector; wins over wait-for-selector-hidden.'
+    required: false
+    default: 'false'
+  wait-for-selector-timeout:
+    description: 'Maximum time to wait for the selector in milliseconds. Pass 0 to disable the timeout. Defaults to 30000.'
+    required: false
+    default: '30000'
   url:
     description: 'The URL of the web application. Wins over the deprecated webapp-url when both are set; one of the two is required.'
     required: false
@@ -260,7 +280,12 @@ runs:
         REGEXP_VERBOSE: ${{ inputs.regexp-verbose }}
         REGEXP_WARNING: ${{ inputs.regexp-warning }}
         VALIDATE_STATUS: ${{ inputs.validate-status }}
+        WAIT_FOR_SELECTOR: ${{ inputs.wait-for-selector }}
+        WAIT_FOR_SELECTOR_HIDDEN: ${{ inputs.wait-for-selector-hidden }}
+        WAIT_FOR_SELECTOR_TIMEOUT: ${{ inputs.wait-for-selector-timeout }}
+        WAIT_FOR_SELECTOR_VISIBLE: ${{ inputs.wait-for-selector-visible }}
         WAIT_TIME: ${{ inputs.wait-time }}
+        WAIT_UNTIL: ${{ inputs.wait-until }}
         WEBAPP_URL: ${{ inputs.url || inputs.webapp-url }}
 
     - name: Set Output

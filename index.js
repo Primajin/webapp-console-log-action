@@ -4,6 +4,12 @@ import {chromium} from 'playwright';
 import {exportVariable} from '@actions/core';
 import {runPreScript} from './pre-script.js';
 import {
+	buildSelectorWaitOptions,
+	describeWaitUntil,
+	mapWaitUntil,
+	waitForConfiguredSelector,
+} from './wait.js';
+import {
 	buildCaptureUrl,
 	filterMessage,
 	shouldCapture,
@@ -41,6 +47,28 @@ const port = process.env.PORT || '';
  @default '5000'
  */
 const waitTime = process.env.WAIT_TIME || '5000';
+
+// When the navigation counts as done; the default, "load", is what page.goto waits for without an option
+const waitUntilInput = process.env.WAIT_UNTIL;
+const waitUntilResult = mapWaitUntil(waitUntilInput);
+const {warning: waitUntilWarning, notice: waitUntilNotice} = describeWaitUntil(waitUntilInput, waitUntilResult);
+if (waitUntilWarning) {
+	console.warn(waitUntilWarning);
+}
+
+if (waitUntilNotice) {
+	console.log(waitUntilNotice);
+}
+
+/**
+ Selector to wait for before the capture ends, and how (empty: do not wait).
+ */
+const waitForSelector = process.env.WAIT_FOR_SELECTOR || '';
+const waitForSelectorOptions = buildSelectorWaitOptions({
+	visible: (process.env.WAIT_FOR_SELECTOR_VISIBLE || '').toLowerCase() === 'true',
+	hidden: (process.env.WAIT_FOR_SELECTOR_HIDDEN || '').toLowerCase() === 'true',
+	timeout: process.env.WAIT_FOR_SELECTOR_TIMEOUT,
+});
 
 /**
  URL of the web application.
@@ -130,7 +158,7 @@ const failEarly = async reason => {
 	exportVariable('SHOULD_FAIL_REASON', reason);
 };
 
-const response = await page.goto(captureUrl);
+const response = await page.goto(captureUrl, {waitUntil: waitUntilResult.value});
 const statusCode = response ? response.status() : 0;
 const {ok: statusOk, reason: statusReason} = validateStatusCode(statusCode);
 
@@ -158,6 +186,8 @@ if (preScriptError) {
 	console.error(preScriptError);
 	await failEarly(`Pre-script failed: ${preScriptError.cause?.message ?? preScriptError.message}`);
 } else if (statusOk) {
+	// After the pre-script, so a selector of the page it leads to can be waited for. The logs of the wait are captured.
+	await waitForConfiguredSelector(page, waitForSelector, waitForSelectorOptions);
 	await page.waitForTimeout(Number(waitTime)); // Wait for the specified time
 
 	console.log(' ');

@@ -23,6 +23,7 @@ const page = {
 	context: vi.fn(() => ({name: 'context'})),
 	goto: vi.fn(),
 	on: vi.fn(),
+	waitForSelector: vi.fn(),
 	waitForTimeout: vi.fn(),
 };
 
@@ -66,6 +67,7 @@ describe('index.js', () => {
 		page.goto.mockReset();
 		page.on.mockReset();
 		page.waitForTimeout.mockReset();
+		page.waitForSelector.mockReset();
 		browser.close.mockReset();
 		browser.newPage.mockClear();
 		vi.mocked(chromium.launch).mockClear();
@@ -162,7 +164,7 @@ describe('index.js', () => {
 
 		await import('./index.js');
 
-		expect(page.goto).toHaveBeenCalledWith('https://example.com:3000/');
+		expect(page.goto).toHaveBeenCalledWith('https://example.com:3000/', {waitUntil: 'load'});
 		expect(page.waitForTimeout).toHaveBeenCalledWith(1000);
 	});
 
@@ -336,5 +338,121 @@ describe('index.js', () => {
 		await import('./index.js');
 
 		expect(validateStatusCode).toHaveBeenCalledWith(0);
+	});
+
+	test('should navigate with the load event unless wait-until says otherwise', async () => {
+		await import('./index.js');
+
+		expect(page.goto).toHaveBeenCalledWith('http://localhost', {waitUntil: 'load'});
+	});
+
+	test.each([
+		['domcontentloaded', 'domcontentloaded'],
+		['NETWORKIDLE', 'networkidle'],
+		['networkidle0', 'networkidle'],
+		['commit', 'commit'],
+	])('should navigate with wait-until %s as %s', async (input, expected) => {
+		vi.stubEnv('WAIT_UNTIL', input);
+
+		await import('./index.js');
+
+		expect(page.goto).toHaveBeenCalledWith('http://localhost', {waitUntil: expected});
+	});
+
+	test('should warn about an unknown wait-until and use load', async () => {
+		vi.stubEnv('WAIT_UNTIL', 'whenever');
+		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+		await import('./index.js');
+
+		expect(warn).toHaveBeenCalledWith('Unknown wait-until "whenever", using "load".');
+		expect(page.goto).toHaveBeenCalledWith('http://localhost', {waitUntil: 'load'});
+		warn.mockRestore();
+	});
+
+	test('should still wait for wait-time on top of wait-until', async () => {
+		vi.stubEnv('WAIT_UNTIL', 'networkidle');
+		vi.stubEnv('WAIT_TIME', '1234');
+
+		await import('./index.js');
+
+		expect(page.waitForTimeout).toHaveBeenCalledWith(1234);
+	});
+
+	test('should not wait for a selector unless one is set', async () => {
+		await import('./index.js');
+
+		expect(page.waitForSelector).not.toHaveBeenCalled();
+	});
+
+	test('should wait for the selector with the given state and timeout before the wait time', async () => {
+		vi.stubEnv('WAIT_FOR_SELECTOR', '#ready');
+		vi.stubEnv('WAIT_FOR_SELECTOR_VISIBLE', 'true');
+		vi.stubEnv('WAIT_FOR_SELECTOR_TIMEOUT', '5000');
+		const order = [];
+		page.waitForSelector.mockImplementation(async () => {
+			order.push('selector');
+		});
+		page.waitForTimeout.mockImplementation(async () => {
+			order.push('wait-time');
+		});
+
+		await import('./index.js');
+
+		expect(page.waitForSelector).toHaveBeenCalledWith('#ready', {state: 'visible', timeout: 5000});
+		expect(order).toEqual(['selector', 'wait-time']);
+	});
+
+	test('should wait for the selector to be hidden', async () => {
+		vi.stubEnv('WAIT_FOR_SELECTOR', '.spinner');
+		vi.stubEnv('WAIT_FOR_SELECTOR_HIDDEN', 'true');
+
+		await import('./index.js');
+
+		expect(page.waitForSelector).toHaveBeenCalledWith('.spinner', {state: 'hidden', timeout: 30_000});
+	});
+
+	test('should wait for the selector after the pre-script, and capture the logs of the wait', async () => {
+		vi.stubEnv('PRE_SCRIPT_PATH', './login.js');
+		vi.stubEnv('WAIT_FOR_SELECTOR', '#secure');
+		const order = [];
+		vi.mocked(runPreScript).mockImplementation(async () => {
+			order.push('pre-script');
+			return false;
+		});
+		page.waitForSelector.mockImplementation(async () => {
+			order.push('selector');
+			consoleListener({type: () => 'log', text: () => 'Logged while waiting'});
+		});
+
+		await import('./index.js');
+
+		expect(order).toEqual(['pre-script', 'selector']);
+		expect(fs.writeFile).toHaveBeenCalledWith('console_output.json', JSON.stringify({info: ['Logged while waiting']}, null, 2));
+	});
+
+	test('should go on capturing when the selector is never reached', async () => {
+		vi.stubEnv('WAIT_FOR_SELECTOR', '#never');
+		vi.stubEnv('SHOULD_FAIL_ACTION', '');
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		page.waitForSelector.mockRejectedValue(new Error('Timeout 30000ms exceeded'));
+		page.goto.mockImplementation(async () => {
+			consoleListener({type: () => 'log', text: () => 'Before the timeout'});
+		});
+
+		await import('./index.js');
+
+		expect(page.waitForTimeout).toHaveBeenCalled();
+		expect(fs.writeFile).toHaveBeenCalledWith('console_output.json', JSON.stringify({info: ['Before the timeout']}, null, 2));
+		expect(process.env.SHOULD_FAIL_ACTION).not.toBe('true');
+	});
+
+	test('should not wait for the selector when the HTTP status check fails', async () => {
+		vi.stubEnv('WAIT_FOR_SELECTOR', '#ready');
+		vi.mocked(validateStatusCode).mockReturnValue({ok: false, reason: 'HTTP status 500 is not in the configured positive status codes (200).'});
+
+		await import('./index.js');
+
+		expect(page.waitForSelector).not.toHaveBeenCalled();
 	});
 });
