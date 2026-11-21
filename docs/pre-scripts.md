@@ -4,7 +4,7 @@ Pre-scripts let the action sign in, prepare state, or trigger navigation before 
 
 ## How it works
 
-1. The action opens `webapp-url`.
+1. The action opens `url`.
 2. If `pre-script-path` is set, the action imports that module from `GITHUB_WORKSPACE`. The action does not check out your repository, so run `actions/checkout` in your job before it (see [the workflow example](#workflow)).
 3. The module's default export is called.
 4. When the pre-script finishes, the action waits for `wait-time` and captures all console messages emitted during that period.
@@ -18,7 +18,7 @@ The file referenced by `pre-script-path` must export a default async function. T
 - `page`: the Playwright page
 - `context`: the Playwright browser context
 - `browser`: the Playwright browser
-- `url`: the resolved `webapp-url`
+- `url`: the resolved `url` (or the deprecated `webapp-url`)
 - `startCapture`: starts console collection immediately
 
 The path is checked at the very start of the action: when it is set and does not point to an existing file (absolute, or relative to `GITHUB_WORKSPACE`), the action fails with an error that tells you to add `actions/checkout` before it or to fix the path, before anything is installed or started. Versions up to v1 ran their own checkout, so for a caller that relied on it this is a breaking change, see [Migrating to v2](../README.md#migrating-to-v2).
@@ -44,7 +44,7 @@ steps:
     uses: Primajin/webapp-console-log-action@v1
     with:
       pre-script-path: .github/scripts/the-internet-login.js
-      webapp-url: 'https://the-internet.herokuapp.com/login'
+      url: 'https://the-internet.herokuapp.com/login'
     env:
       DEMO_LOGIN_PASSWORD: ${{ secrets.DEMO_LOGIN_PASSWORD }}
       DEMO_LOGIN_USERNAME: ${{ secrets.DEMO_LOGIN_USERNAME }}

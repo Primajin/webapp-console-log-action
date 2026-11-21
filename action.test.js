@@ -35,6 +35,16 @@ const getRunScript = stepId => {
 	return match.groups.body.replaceAll(/^ {8}/gmv, '');
 };
 
+/**
+ Returns the block of one input in action.yml.
+ @param {string} name - The key under inputs.
+ @returns {string} - The block, up to the next input.
+ */
+const getInputBlock = name => {
+	const match = new RegExp(String.raw`^ {2}${name}:\n(?<block>(?: {4}.*\n)+)`, 'mv').exec(actionYaml);
+	return match?.groups.block ?? '';
+};
+
 const setPortScript = getRunScript('set-port');
 const workDirectory = mkdtempSync(path.join(tmpdir(), 'set-port-'));
 let runCount = 0;
@@ -283,7 +293,7 @@ describe('action.yml pre-script guard step', () => {
 
 	test('runs before the steps that need Node and does not check out the repository', () => {
 		const stepNames = actionYaml.matchAll(/^ {4}- name: (?<name>.+?)(?: {2}#.*)?$/gmv).map(match => match.groups.name).toArray();
-		expect(stepNames.indexOf('Check that the pre-script exists')).toBeGreaterThan(stepNames.indexOf('Decide whether webapp-url is local and set the port'));
+		expect(stepNames.indexOf('Check that the pre-script exists')).toBeGreaterThan(stepNames.indexOf('Decide whether the url is local and set the port'));
 		expect(stepNames.indexOf('Check that the pre-script exists')).toBeLessThan(stepNames.indexOf('Setup Playwright'));
 		expect(actionYaml).not.toContain('actions/checkout@');
 	});
@@ -294,5 +304,162 @@ describe('action.yml pre-script guard step', () => {
 		expect(step).toContain('PRE_SCRIPT_PATH: ${{ inputs.pre-script-path }}');
 		expect(checkPreScriptScript).not.toContain('${{');
 		/* eslint-enable no-template-curly-in-string */
+	});
+});
+
+describe('action.yml url input and its webapp-url alias', () => {
+	const checkUrlScript = getRunScript('check-url');
+
+	/**
+	 Runs the url check step with bash.
+	 @param {string} url - The url input.
+	 @param {string} webappUrl - The deprecated webapp-url input.
+	 @returns {{status: number, stdout: string}} - Exit status and stdout.
+	 */
+	const runCheckUrl = (url, webappUrl) => {
+		const result = spawnSync('bash', ['-c', checkUrlScript], {
+			encoding: 'utf8',
+			env: {PATH: process.env.PATH, URL_INPUT: url, WEBAPP_URL_INPUT: webappUrl},
+		});
+		return {status: result.status, stdout: result.stdout};
+	};
+
+	test('neither input is required, because either one satisfies the action', () => {
+		for (const name of ['url', 'webapp-url']) {
+			expect(getInputBlock(name), name).toContain('required: false');
+		}
+	});
+
+	test('marks webapp-url as deprecated and gives neither input a default', () => {
+		expect(getInputBlock('webapp-url')).toContain('Deprecated alias of url');
+		expect(getInputBlock('url')).not.toContain('default:');
+		expect(getInputBlock('webapp-url')).not.toContain('default:');
+	});
+
+	test('fails clearly when neither input is set, also for whitespace', () => {
+		for (const value of ['', '  ', '\n']) {
+			const {status, stdout} = runCheckUrl(value, value);
+			expect(status, JSON.stringify(value)).toBe(1);
+			expect(stdout).toContain('::error::url is required');
+		}
+	});
+
+	test('accepts url alone without a warning', () => {
+		expect(runCheckUrl('https://example.com', '')).toEqual({status: 0, stdout: ''});
+	});
+
+	test('accepts webapp-url alone and warns that it is deprecated', () => {
+		const {status, stdout} = runCheckUrl('', 'https://example.com');
+		expect(status).toBe(0);
+		expect(stdout).toContain('::warning::webapp-url is deprecated, use url instead.');
+	});
+
+	test('lets url win when both are set and says so', () => {
+		const {status, stdout} = runCheckUrl('https://a.example', 'https://b.example');
+		expect(status).toBe(0);
+		expect(stdout).toContain('::warning::Both url and webapp-url are set; using url.');
+	});
+
+	test('hands every step the same url, with url first', () => {
+		/* eslint-disable no-template-curly-in-string -- the literal GitHub expression syntax is what is asserted */
+		const pair = '${{ inputs.url || inputs.webapp-url }}';
+		const steps = actionYaml.split('\n    - ');
+		const usingUrl = steps.filter(step => /WEBAPP_URL: /v.test(step));
+		expect(usingUrl).toHaveLength(2);
+		for (const step of usingUrl) {
+			expect(step).toContain(`WEBAPP_URL: ${pair}`);
+		}
+
+		// Only the check step and the alias expression may read webapp-url directly
+		const readers = actionYaml.split('\n').filter(line => line.includes('${{ inputs.webapp-url') && !line.includes(pair));
+		expect(readers).toEqual(['        WEBAPP_URL_INPUT: ${{ inputs.webapp-url }}']);
+		/* eslint-enable no-template-curly-in-string */
+	});
+
+	test('runs the url check before anything uses the url', () => {
+		const stepNames = actionYaml.matchAll(/^ {4}- name: (?<name>.+?)(?: {2}#.*)?$/gmv).map(match => match.groups.name).toArray();
+		expect(stepNames[0]).toBe('Check url');
+	});
+});
+
+describe('action.yml capture step', () => {
+	const captureStep = actionYaml.split('\n    - ').find(candidate => candidate.startsWith('name: Execute Capture Script\n'));
+
+	test('hands the capture script the wait and context inputs through env', () => {
+		for (const [variable, input] of [
+			['CONTEXT_OPTIONS', 'context-options'],
+			['WAIT_UNTIL', 'wait-until'],
+			['WAIT_FOR_SELECTOR', 'wait-for-selector'],
+			['WAIT_FOR_SELECTOR_VISIBLE', 'wait-for-selector-visible'],
+			['WAIT_FOR_SELECTOR_HIDDEN', 'wait-for-selector-hidden'],
+			['WAIT_FOR_SELECTOR_TIMEOUT', 'wait-for-selector-timeout'],
+			['WAIT_TIME', 'wait-time'],
+			['REPORT_PAGE_PROBLEMS', 'report-page-problems'],
+		]) {
+			expect(captureStep, input).toContain(`${variable}: \${{ inputs.${input} }}`);
+		}
+	});
+
+	test('keeps the navigation default at load and the selector timeout at 30 seconds', () => {
+		expect(getInputBlock('wait-until')).toContain('default: \'load\'');
+		expect(getInputBlock('wait-for-selector-timeout')).toContain('default: \'30000\'');
+		expect(getInputBlock('wait-time')).toContain('default: \'2500\'');
+		expect(getInputBlock('wait-for-selector')).toContain('default: \'\'');
+		expect(getInputBlock('context-options')).toContain('default: \'\'');
+	});
+});
+
+describe('action.yml comment step', () => {
+	const formatScript = getRunScript('format_console_output');
+
+	test('posts through its own script and no longer through a third-party comment action', () => {
+		expect(actionYaml).not.toMatch(/uses: thollander/v);
+		const step = actionYaml.split('\n    - ').find(candidate => candidate.startsWith('name: Post Console Output to PR\n'));
+		expect(step).toContain('run: node post-comment.js');
+		expect(step).toContain('github.event_name == \'pull_request\'');
+	});
+
+	test('hands the script its inputs through env only', () => {
+		const step = actionYaml.split('\n    - ').find(candidate => candidate.startsWith('name: Post Console Output to PR\n'));
+		/* eslint-disable no-template-curly-in-string -- the literal GitHub expression syntax is what is asserted */
+		expect(step).toContain('COMMENT: ${{ inputs.comment }}');
+		expect(step).toContain('COMMENT_FOOTER: ${{ inputs.comment-footer }}');
+		expect(step).toContain('COMMENT_HEADLINE: ${{ inputs.comment-headline }}');
+		expect(step).toContain('HEADLINE: ${{ inputs.headline }}');
+		expect(step).toContain('COMMENT_MODE: ${{ inputs.comment-mode }}');
+		expect(step).toContain('COMMENT_SECTION: ${{ inputs.comment-section }}');
+		expect(step).toContain('COMMENT_TAG: ${{ inputs.comment-tag }}');
+		expect(step).toContain('GITHUB_TOKEN: ${{ env.GITHUB_TOKEN || github.token }}');
+		/* eslint-enable no-template-curly-in-string */
+	});
+
+	test('gives neither headline input a default, so that an unset comment-headline can be told from a set one', () => {
+		expect(getInputBlock('comment-headline')).not.toContain('default:');
+		expect(getInputBlock('headline')).not.toContain('default:');
+		expect(getInputBlock('headline')).toContain('Deprecated alias of comment-headline');
+		expect(getInputBlock('comment-headline')).toContain('required: false');
+	});
+
+	test('defaults comment and comment-footer to true, which is the behaviour of a run without them', () => {
+		for (const name of ['comment', 'comment-footer']) {
+			expect(getInputBlock(name), name).toContain('default: \'true\'');
+		}
+	});
+
+	test('gives comment-section no default, so that a call owns the whole comment unless it names a section', () => {
+		expect(getInputBlock('comment-section')).toContain('required: false');
+		expect(getInputBlock('comment-section')).not.toContain('default:');
+	});
+
+	test('formats the logs without a headline, which the comment script adds', () => {
+		const directory = mkdtempSync(path.join(workDirectory, 'format-'));
+		writeFileSync(path.join(directory, 'console_output.json'), JSON.stringify({info: ['hello']}));
+		const result = spawnSync('bash', ['-c', formatScript], {
+			encoding: 'utf8',
+			cwd: directory,
+			env: {PATH: process.env.PATH, SHOW_EMOJI: 'false', SHOULD_FAIL_REASON: ''},
+		});
+		expect(result.status).toBe(0);
+		expect(readFileSync(path.join(directory, 'formatted_console_output.md'), 'utf8')).toBe('## Info\n```\nhello\n```\n\n');
 	});
 });

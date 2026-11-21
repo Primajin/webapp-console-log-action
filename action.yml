@@ -10,14 +10,35 @@ inputs:
   artifact-name:
     description: 'The name of the artifact to download'
     required: false
+  comment-section:
+    description: 'Name of this call''s section, to let several calls share ONE comment (the one of comment-tag): the comment holds one section per name, and a call replaces only its own section and leaves the others as they are. The headline and footer are shared (the latest call wins). Empty: this call owns the whole comment. Needs comment-mode update and a comment-tag, otherwise it is ignored with a warning. Calls must run one after the other: parallel calls can lose updates.'
+    required: false
   comment-tag:
-    description: 'The tag to use for the comment - so it can be replaced, you may pass empty string to always post a new comment'
+    description: 'The tag to use for the comment, so that comment-mode update can find and edit it. An empty string always posts a new comment.'
     required: false
     default: 'console-log'
-  headline:
-    description: 'The headline for the console logs comment'
+  comment:
+    description: 'Whether to post the console logs to the pull request comment. false, 0, no and off switch it off: the logs are still captured, set as output and fail the action by log level, nothing is posted. Defaults to true.'
     required: false
-    default: 'Console Logs'
+    default: 'true'
+  comment-footer:
+    description: 'Add a small footer with the commit and a link to the workflow run to the comment. false, 0, no and off switch it off. Defaults to true.'
+    required: false
+    default: 'true'
+  comment-headline:
+    description: "The headline of the comment. Wins over the deprecated headline when both are set. Defaults to 'Console Logs'."
+    required: false
+  comment-mode:
+    description: 'update edits the comment this action posted earlier on the pull request (found by comment-tag) in place, new always posts a new comment.'
+    required: false
+    default: 'update'
+  headline:
+    description: 'Deprecated alias of comment-headline, kept for existing workflows. Use comment-headline instead.'
+    required: false
+  context-options:
+    description: 'JSON object with Playwright browser context options for the capture: colorScheme (light, dark, no-preference), reducedMotion (reduce, no-preference), forcedColors (active, none), deviceScaleFactor (number above 0, at most 5), isMobile, hasTouch (booleans), viewport ({width, height} up to 10000), locale (a language tag), timezoneId (an IANA time zone), userAgent. Invalid JSON, an unknown key or a wrong type fails the run. e.g. {"colorScheme": "dark", "reducedMotion": "reduce"}'
+    required: false
+    default: ''
   max-log-level:
     description: 'The maximum log level to allow (verbose, info, warning, error). Set to error to disable failing.'
     required: false
@@ -26,6 +47,10 @@ inputs:
     description: 'The minimum log level to capture (verbose, info, warning, error)'
     required: false
     default: 'verbose'
+  report-page-problems:
+    description: 'When true, report what the page does wrong while it is captured: uncaught exceptions, console errors from before the log capture started (the ones captured are in the Error section anyway) and a wait-for-selector that timed out. They are shown as a warning block in the PR comment and as warning annotations of the run (the first 10). It never fails the run. Defaults to false.'
+    required: false
+    default: 'false'
   pre-script-path:
     description: 'Path to a JavaScript module, relative to the workspace or absolute, whose default export is an async function receiving { browser, context, page, startCapture, url }. Use it to log in or prepare the page before the capture, for example to dismiss a cookie banner. Console capture starts when it calls startCapture(), or when it returns if it never does. If it fails, the comment reports why and the action fails.'
     required: false
@@ -53,7 +78,7 @@ inputs:
     required: false
     default: 'true'
   validate-status:
-    description: 'Whether to validate the HTTP response status code before log collection'
+    description: 'Whether to validate the HTTP response status code of the navigation before the logs are collected: the final status, after redirects. Set to false to disable. When it fails, the comment says why and the action fails. Defaults to true.'
     required: false
     default: 'true'
   positive-statuses:
@@ -66,9 +91,32 @@ inputs:
     description: 'The wait time before capturing logs'
     required: false
     default: '2500'
+  wait-until:
+    description: "When to consider the navigation succeeded: load, domcontentloaded, networkidle or commit. Legacy Puppeteer values networkidle0 and networkidle2 are mapped to networkidle. An unknown value logs a warning and uses the default. Defaults to 'load' (what the action always waited for). wait-time is waited on top of it."
+    required: false
+    default: 'load'
+  wait-for-selector:
+    description: "Wait for the selector to be attached to the DOM before the capture ends, after the pre-script if there is one. Returns immediately if it already exists. If it doesn't appear within the timeout, the error is logged and the capture goes on. wait-time is waited on top of it."
+    required: false
+    default: ''
+  wait-for-selector-hidden:
+    description: 'Wait for the selected element to not be found in the DOM or to be hidden, i.e. have display: none or visibility: hidden CSS properties. Needs wait-for-selector.'
+    required: false
+    default: 'false'
+  wait-for-selector-visible:
+    description: 'Wait for the selected element to be present in DOM and to be visible, i.e. to not have display: none or visibility: hidden CSS properties. Needs wait-for-selector; wins over wait-for-selector-hidden.'
+    required: false
+    default: 'false'
+  wait-for-selector-timeout:
+    description: 'Maximum time to wait for the selector in milliseconds. Pass 0 to disable the timeout. Defaults to 30000.'
+    required: false
+    default: '30000'
+  url:
+    description: 'The URL of the web application. Wins over the deprecated webapp-url when both are set; one of the two is required.'
+    required: false
   webapp-url:
-    description: 'The URL of the web application'
-    required: true
+    description: 'Deprecated alias of url, kept for existing workflows. Use url instead.'
+    required: false
 
 outputs:
   console:
@@ -79,8 +127,27 @@ runs:
   using: 'composite'
   steps:
     # Inputs reach the shell only through env: they are never interpolated into a script body.
-    # This step decides once whether webapp-url is served from the runner (is-local); every later step uses that output.
-    - name: Decide whether webapp-url is local and set the port
+    # This step decides once whether the url is served from the runner (is-local); every later step uses that output.
+    # url is the canonical input and webapp-url its deprecated alias. Every step reads the pair through
+    # the expression inputs.url || inputs.webapp-url, so url wins when both are set.
+    - name: Check url
+      id: check-url
+      run: |
+        if [[ -z "${URL_INPUT//[[:space:]]/}" && -z "${WEBAPP_URL_INPUT//[[:space:]]/}" ]]; then
+          echo '::error::url is required: set the url input to the address of the web application.'
+          exit 1
+        fi
+        if [[ -n "${URL_INPUT//[[:space:]]/}" && -n "${WEBAPP_URL_INPUT//[[:space:]]/}" ]]; then
+          echo '::warning::Both url and webapp-url are set; using url. webapp-url is deprecated, remove it.'
+        elif [[ -z "${URL_INPUT//[[:space:]]/}" ]]; then
+          echo '::warning::webapp-url is deprecated, use url instead.'
+        fi
+      shell: bash
+      env:
+        URL_INPUT: ${{ inputs.url }}
+        WEBAPP_URL_INPUT: ${{ inputs.webapp-url }}
+
+    - name: Decide whether the url is local and set the port
       id: set-port
       run: |
         # Only plain http on a loopback host is local: http-server cannot serve https, and a look-alike host
@@ -114,13 +181,27 @@ runs:
       shell: bash
       env:
         INPUT_PORT: ${{ inputs.port }}
-        WEBAPP_URL: ${{ inputs.webapp-url }}
+        WEBAPP_URL: ${{ inputs.url || inputs.webapp-url }}
+
+    - name: Check comment mode
+      run: |
+        if [[ "$COMMENT_MODE" != update && "$COMMENT_MODE" != new ]]; then
+          printf '::error::comment-mode must be update or new (got %q).\n' "$COMMENT_MODE"
+          exit 1
+        fi
+      shell: bash
+      env:
+        COMMENT: ${{ inputs.comment }}
+        COMMENT_FOOTER: ${{ inputs.comment-footer }}
+        COMMENT_HEADLINE: ${{ inputs.comment-headline }}
+        COMMENT_MODE: ${{ inputs.comment-mode }}
+        COMMENT_SECTION: ${{ inputs.comment-section }}
 
     - name: Check artifact name requirement
       if: steps.set-port.outputs.is-local == 'true'
       run: |
         if [[ -z "$ARTIFACT_NAME" ]]; then
-          echo "Error: artifact-name is required when webapp-url points to localhost."
+          echo "Error: artifact-name is required when the url points to localhost."
           exit 1
         fi
       shell: bash
@@ -195,6 +276,7 @@ runs:
       shell: bash
       working-directory: ${{ github.action_path }}
       env:
+        CONTEXT_OPTIONS: ${{ inputs.context-options }}
         MAX_LOG_LEVEL: ${{ inputs.max-log-level }}
         MIN_LOG_LEVEL: ${{ inputs.min-log-level }}
         NEGATIVE_STATUSES: ${{ inputs.negative-statuses }}
@@ -206,9 +288,15 @@ runs:
         REGEXP_INFO: ${{ inputs.regexp-info }}
         REGEXP_VERBOSE: ${{ inputs.regexp-verbose }}
         REGEXP_WARNING: ${{ inputs.regexp-warning }}
+        REPORT_PAGE_PROBLEMS: ${{ inputs.report-page-problems }}
         VALIDATE_STATUS: ${{ inputs.validate-status }}
+        WAIT_FOR_SELECTOR: ${{ inputs.wait-for-selector }}
+        WAIT_FOR_SELECTOR_HIDDEN: ${{ inputs.wait-for-selector-hidden }}
+        WAIT_FOR_SELECTOR_TIMEOUT: ${{ inputs.wait-for-selector-timeout }}
+        WAIT_FOR_SELECTOR_VISIBLE: ${{ inputs.wait-for-selector-visible }}
         WAIT_TIME: ${{ inputs.wait-time }}
-        WEBAPP_URL: ${{ inputs.webapp-url }}
+        WAIT_UNTIL: ${{ inputs.wait-until }}
+        WEBAPP_URL: ${{ inputs.url || inputs.webapp-url }}
 
     - name: Set Output
       id: capture-console
@@ -222,8 +310,8 @@ runs:
     - name: Format Console Output  # Step to format the console output into GitHub Flavored Markdown
       id: format_console_output
       run: |
-        # Create a markdown file and add a main heading
-        echo "# $HEADLINE" > formatted_console_output.md
+        # Start an empty markdown file; the comment step adds the headline, the marker and the footer around it
+        : > formatted_console_output.md
         # Check if there is an early-exit reason (e.g. HTTP status validation failure)
         if [ -n "$SHOULD_FAIL_REASON" ]; then
           if [ "$SHOW_EMOJI" = "true" ]; then
@@ -278,18 +366,25 @@ runs:
       shell: bash
       working-directory: ${{ github.action_path }}
       env:
-        HEADLINE: ${{ inputs.headline }}
         SHOULD_FAIL_REASON: ${{ env.SHOULD_FAIL_REASON }}
         SHOW_EMOJI: ${{ inputs.show-emoji }}
 
+    # Posted by this action's own script (no third-party comment action): it edits the comment of an earlier run in
+    # place, also one that an earlier version posted with thollander/actions-comment-pull-request.
     - name: Post Console Output to PR
       if: github.event_name == 'pull_request'
-      uses: thollander/actions-comment-pull-request@v3
-      with:
-        comment-tag: ${{ inputs.comment-tag }}
-        file-path: ${{ github.action_path }}/formatted_console_output.md
+      run: node post-comment.js
+      shell: bash
+      working-directory: ${{ github.action_path }}
       env:
-        GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }}
+        COMMENT: ${{ inputs.comment }}
+        COMMENT_FOOTER: ${{ inputs.comment-footer }}
+        COMMENT_HEADLINE: ${{ inputs.comment-headline }}
+        COMMENT_MODE: ${{ inputs.comment-mode }}
+        COMMENT_SECTION: ${{ inputs.comment-section }}
+        COMMENT_TAG: ${{ inputs.comment-tag }}
+        GITHUB_TOKEN: ${{ env.GITHUB_TOKEN || github.token }}
+        HEADLINE: ${{ inputs.headline }}
 
     - name: Check if action should fail
       run: |

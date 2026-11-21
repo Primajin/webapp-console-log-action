@@ -13,10 +13,10 @@ issues arise as early as possible - especially when the pull request was opened 
 - Capture console logs from authenticated areas after a login flow
 
 ### Dependencies
-This action uses [http-server](https://www.npmjs.com/package/http-server) to serve the web application (only when `webapp-url` is a [local URL](#local-urls)) and [playwright](https://www.npmjs.com/package/playwright) to capture the console logs.
+This action uses [http-server](https://www.npmjs.com/package/http-server) to serve the web application (only when `url` is a [local URL](#local-urls)) and [playwright](https://www.npmjs.com/package/playwright) to capture the console logs.
 Both are installed from the lockfile of this action (`npm ci --omit=dev`), so the versions are pinned and nothing is fetched at run time beyond that and the Chromium browser, which is cached between runs.
 The action does not check out your repository, that is up to your workflow. It only needs your files for [`pre-script-path`](#example-with-a-login-pre-script), because the script is read from your workspace: add `actions/checkout` before the action then, or it stops at the start and asks you for it.
-Furthermore, thanks to [thollander/actions-comment-pull-request](https://github.com/thollander/actions-comment-pull-request) for the comment functionality.
+The comment is posted with the GitHub API through [@actions/github](https://www.npmjs.com/package/@actions/github) (it used to be [thollander/actions-comment-pull-request](https://github.com/thollander/actions-comment-pull-request), thanks for that; a comment that this older version posted is still found and updated in place).
 
 ## Usage
 To use this action, include it in your GitHub Actions workflow:
@@ -50,7 +50,7 @@ jobs:
         uses: Primajin/webapp-console-log-action@v1
         with:
           artifact-name: your-artifact-name
-          webapp-url: 'http://localhost'
+          url: 'http://localhost'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
@@ -74,7 +74,7 @@ jobs:
       - name: Capture Console Logs
         uses: Primajin/webapp-console-log-action@v1
         with:
-          webapp-url: 'https://your-deployed-app.com'
+          url: 'https://your-deployed-app.com'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
@@ -115,14 +115,14 @@ Then reference it from the workflow. The script is read from your workspace and 
     pre-script-timeout: 30000
     regexp-error: '^Failed to load resource: net::ERR_NAME_NOT_RESOLVED$'
     wait-time: 1000
-    webapp-url: 'https://the-internet.herokuapp.com/login'
+    url: 'https://the-internet.herokuapp.com/login'
   env:
     DEMO_LOGIN_PASSWORD: ${{ secrets.DEMO_LOGIN_PASSWORD }}
     DEMO_LOGIN_USERNAME: ${{ secrets.DEMO_LOGIN_USERNAME }}
     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-The action opens `webapp-url`, runs the pre-script, and starts collecting console output. Call `startCapture()` inside the script if you want to begin collecting before the script ends. In the example above, the script proves login succeeded by waiting for the secure-area success message and the Logout link after the redirect. The public demo site can emit unrelated `ERR_NAME_NOT_RESOLVED` resource errors in CI, so the workflow filters those out. See [docs/pre-scripts.md](docs/pre-scripts.md) for the full contract.
+The action opens `url`, runs the pre-script, and starts collecting console output. Call `startCapture()` inside the script if you want to begin collecting before the script ends. In the example above, the script proves login succeeded by waiting for the secure-area success message and the Logout link after the redirect. The public demo site can emit unrelated `ERR_NAME_NOT_RESOLVED` resource errors in CI, so the workflow filters those out. See [docs/pre-scripts.md](docs/pre-scripts.md) for the full contract.
 
 ## Migrating to v2
 v2 no longer runs `actions/checkout` inside the action. A second checkout re-checked out your commit and cleaned untracked files, which could delete build output your job had produced in the workspace.
@@ -134,28 +134,51 @@ v2 no longer runs `actions/checkout` inside the action. A second checkout re-che
 ## Inputs
 | Input                               | Description                                                                                                                                                        | Required | Default       |
 |-------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|---------------|
-| `artifact-name`                     | The name of the artifact to download (required if `webapp-url` is a [local URL](#local-urls))                                                                              | false    |               |
-| `comment-tag`                       | The tag to use for the comment - so that consecutive pushes will update the same comment                                                                           | false    | console-log   |
-| `headline`                          | The headline for the console logs                                                                                                                                  | false    | Console Logs  |
+| `artifact-name`                     | The name of the artifact to download (required if `url` is a [local URL](#local-urls))                                                                              | false    |               |
+| `comment`                           | Whether to post the logs to the pull request. `false`, `0`, `no` and `off` skip the comment; the logs are still captured, set as the `console` output and fail the action by log level | false    | true          |
+| `comment-footer`                    | Add a small footer with the commit and a link to the workflow run to the comment. `false`, `0`, `no` and `off` leave it out                                         | false    | true          |
+| `comment-headline`                  | The headline of the comment. Wins over the deprecated `headline` when both are set                                                                                 | false    | Console Logs  |
+| `comment-mode`                      | `update` edits the comment posted by an earlier run in place (found by `comment-tag`), `new` always posts a new comment                                            | false    | update        |
+| `comment-section`                   | Name of this call's section, so that several calls share ONE comment (the one of `comment-tag`): each call replaces only its own section and leaves the others as they are. Needs `comment-mode: update` and a `comment-tag`, otherwise it is ignored with a warning. See [Sections](#sections-in-one-comment) | false    |               |
+| `comment-tag`                       | The tag to use for the comment, so that `comment-mode: update` can find it (a hidden marker line in the comment; comments of earlier versions are found by their old marker). An empty tag always posts a new comment | false    | console-log   |
+| `headline`                          | **Deprecated**, use `comment-headline`. Alias of `comment-headline`, kept so existing workflows keep working                                                       | false    |               |
+| `context-options`                   | JSON object with Playwright browser context options for the capture: `colorScheme` (`light`, `dark`, `no-preference`), `reducedMotion` (`reduce`, `no-preference`), `forcedColors` (`active`, `none`), `deviceScaleFactor` (above 0, at most 5), `isMobile`, `hasTouch`, `viewport` (`{width, height}`, up to 10000), `locale` (a language tag), `timezoneId` (an IANA time zone), `userAgent`. Invalid JSON, an unknown key or a wrong type fails the run. e.g. `{"colorScheme": "dark"}` | false    |               |
 | `max-log-level`                     | The maximum log level to allow (verbose, info, warning, error)                                                                                                     | false    | info          |
 | `min-log-level`                     | The minimum log level to capture (verbose, info, warning, error)                                                                                                   | false    | verbose       |
 | `negative-statuses`                 | Comma-separated list of HTTP status codes that explicitly fail the action (e.g. `"404,500"`). Any code not in `positive-statuses` also fails when validation is on. | false    |               |
 | `positive-statuses`                 | Comma-separated list of HTTP status codes considered successful (e.g. `"200,201"`). Defaults to `200` when not set.                                                | false    |               |
 | `pre-script-path`                   | Path to a JavaScript module, relative to the workspace or absolute, whose default export is an async function receiving `{ browser, context, page, startCapture, url }`. Use it to log in or prepare the page before the capture, for example to dismiss a cookie banner. Console capture starts when it calls `startCapture()`, or when it returns if it never does. If it fails, the comment reports why and the action fails. Your job needs `actions/checkout` before the action. | false    |               |
 | `pre-script-timeout`                | Maximum time in milliseconds the pre-script may run before the action fails. Defaults to 30000.                                                                                                                         | false    | 30000         |
-| `port`                              | The port to run the http-server on, digits only from 1 to 65535 (set to 3000 if `webapp-url` is a local URL and port is not set)                                     | false    |               |
+| `port`                              | The port to run the http-server on, digits only from 1 to 65535 (set to 3000 if `url` is a local URL and port is not set)                                     | false    |               |
 | `regexp-error`                      | Regular expression pattern to <a href="#filter-note" aria-describedby="footnotes-label" role="doc-noteref">filter<sup>1</sup></a> matching parts from error logs   | false    |               |
 | `regexp-info`                       | Regular expression pattern to <a href="#filter-note" aria-describedby="footnotes-label" role="doc-noteref">filter<sup>1</sup></a> matching parts from info logs    | false    |               |
 | `regexp-verbose`                    | Regular expression pattern to <a href="#filter-note" aria-describedby="footnotes-label" role="doc-noteref">filter<sup>1</sup></a> matching parts from verbose logs | false    |               |
 | `regexp-warning`                    | Regular expression pattern to <a href="#filter-note" aria-describedby="footnotes-label" role="doc-noteref">filter<sup>1</sup></a> matching parts from warning logs | false    |               |
+| `report-page-problems`              | Report what the page does wrong: uncaught exceptions, console errors from before the log capture started and a `wait-for-selector` that timed out, as a warning block in the comment and as annotations of the run (the first 10). Never fails the run. See [Page problems](#page-problems) | false    | false         |
 | `show-emoji`                        | Whether to show emojis in the output                                                                                                                               | false    | true          |
 | `validate-status`                   | Whether to validate the HTTP response status code before log collection. Set to `false` to disable.                                                                | false    | true          |
 | `wait-time`                         | The wait time before capturing logs (in milliseconds)                                                                                                              | false    | 2500          |
-| <a id="webapp-url"></a>`webapp-url` | The URL of the web application                                                                                                                                     | true     |               |
+| `wait-until`                        | When to consider the navigation succeeded: `load`, `domcontentloaded`, `networkidle` or `commit` (the legacy Puppeteer values `networkidle0` and `networkidle2` map to `networkidle`). An unknown value logs a warning and uses the default. `wait-time` is waited on top of it | false    | load          |
+| `wait-for-selector`                 | Wait for this selector to be attached to the DOM before the capture ends (after the `pre-script-path` script, if any). If it does not appear within the timeout the error is logged and the capture goes on | false    |               |
+| `wait-for-selector-visible`         | Wait for the element to be visible, not only attached. Needs `wait-for-selector`; wins over `wait-for-selector-hidden`                                             | false    | false         |
+| `wait-for-selector-hidden`          | Wait for the element to be gone or hidden. Needs `wait-for-selector`                                                                                               | false    | false         |
+| `wait-for-selector-timeout`         | Maximum time to wait for the selector in milliseconds, `0` disables the timeout                                                                                    | false    | 30000         |
+| `url`                               | The URL of the web application. One of `url` and the deprecated `webapp-url` is required; `url` wins when both are set                                             | true*    |               |
+| <a id="webapp-url"></a>`webapp-url` | **Deprecated**, use `url`. Alias of `url`, kept so existing workflows keep working (the run logs a deprecation warning)                                            | false*   |               |
+
+\* Neither `url` nor `webapp-url` is marked `required` in `action.yml`, because either one satisfies the action. If both are empty the run fails at its first step with `url is required`.
+
+### Waiting for the page
+
+`wait-until` decides when the navigation counts as done. Its default is `load`, which is what the action always waited for; screenshots-ci-action defaults to `networkidle`, here the default is kept so that existing workflows behave as before. After the navigation (and the pre-script, if you set one) the action waits for `wait-for-selector` if you set it, then for `wait-time`. Console messages are captured throughout, so what the page logs while waiting is part of the comment. A selector that never shows up is logged and the capture goes on.
+
+### Page problems
+
+With `report-page-problems: true` the comment gets a warning block for what the console logs do not show: uncaught exceptions of the page (`pageerror`), console errors that happened before the log capture started (while the navigation ran and the `pre-script-path` script prepared the page, before `startCapture()`), and a `wait-for-selector` that timed out. The same problems are annotations of the workflow run (the first 10, the rest is in the log). They never fail the run; `max-log-level` still decides that. Console errors that the capture records are not repeated: they are in the Error section already, so a console error you filter out with `regexp-error` stays out of the warning block as well.
 
 ### Local URLs
 
-The action decides once, in its first step, whether `webapp-url` is local. A URL is local when it uses plain `http://` and its host is `localhost`, `127.0.0.1` or `[::1]`, optionally followed by a port and a path (`http://localhost:8080/page`). The scheme and host are case-insensitive, so `HTTP://LOCALHOST` is local as well.
+The action decides once, in its first steps, whether `url` is local. A URL is local when it uses plain `http://` and its host is `localhost`, `127.0.0.1` or `[::1]`, optionally followed by a port and a path (`http://localhost:8080/page`). The scheme and host are case-insensitive, so `HTTP://LOCALHOST` is local as well.
 
 For a local URL the action requires `artifact-name`, downloads that artifact into `app/` and serves it with http-server on `port` (3000 when not set; a port inside the URL is replaced by it). `https://localhost` is not local, because http-server only serves plain http, and neither is a host that merely starts with `localhost`, such as `http://localhost.example.com`.
 
@@ -178,19 +201,19 @@ Codes not listed in either set are treated as failures. Supported format: comma-
 # Default: expect 200, fail on anything else
 - uses: Primajin/webapp-console-log-action@v1
   with:
-    webapp-url: 'https://example.com'
+    url: 'https://example.com'
 
 # Accept both 200 and 404 as valid responses
 - uses: Primajin/webapp-console-log-action@v1
   with:
     positive-statuses: '200,404'
-    webapp-url: 'https://example.com/may-not-exist'
+    url: 'https://example.com/may-not-exist'
 
 # Disable validation entirely (any status passes)
 - uses: Primajin/webapp-console-log-action@v1
   with:
     validate-status: 'false'
-    webapp-url: 'https://example.com'
+    url: 'https://example.com'
 ```
 
 <footer role="doc-footnote">
@@ -204,6 +227,23 @@ Codes not listed in either set are treated as failures. Supported format: comma-
   </ol>
 </footer>
 
+### Sections in one comment
+
+With `comment-section`, several calls of the action on the same pull request (for example one per page) share ONE comment instead of posting one each. Every call puts its logs into a collapsible section titled with the section name and replaces only that section the next time it runs; sections appear in the order of their first run, and names that differ only in case, spacing or punctuation are the same section. The headline and the footer belong to the whole comment, the latest call wins. Run the calls one after the other (for example as consecutive steps): parallel calls with the same tag can overwrite each other's update.
+
+```yaml
+- uses: Primajin/webapp-console-log-action@v1
+  with:
+    comment-section: Home
+    url: 'https://example.com/'
+- uses: Primajin/webapp-console-log-action@v1
+  with:
+    comment-section: Login
+    url: 'https://example.com/login'
+```
+
+`comment-section` is ignored, with a warning, for `comment-mode: new` and for an empty `comment-tag`, because both always post a whole new comment. A name without any letter or digit fails the run, since the section could not be told apart from the others.
+
 ## Outputs
 | Output    | Description              |
 |-----------|--------------------------|
@@ -214,7 +254,7 @@ This project is licensed under the Unlicense license - see the [LICENSE](LICENSE
 
 ## Comment
 
-The comment will look something like this:
+The comment will look something like this (it ends with a small footer, `<sub>Commit abcdef0 · workflow run</sub>`, unless you set `comment-footer: false`):
 
 <table>
   <tr>

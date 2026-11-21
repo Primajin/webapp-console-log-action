@@ -1,8 +1,16 @@
 import {promises as fs} from 'node:fs';
 import process from 'node:process';
 import {chromium} from 'playwright';
-import {exportVariable} from '@actions/core';
+import {exportVariable, warning} from '@actions/core';
+import {resolveContextOptions} from './context-options.js';
+import {annotateProblems, createProblemCollector} from './page-problems.js';
 import {runPreScript} from './pre-script.js';
+import {
+	buildSelectorWaitOptions,
+	describeWaitUntil,
+	mapWaitUntil,
+	waitForConfiguredSelector,
+} from './wait.js';
 import {
 	buildCaptureUrl,
 	filterMessage,
@@ -12,9 +20,12 @@ import {
 	logLevels,
 } from './utils.js';
 
+// Playwright browser context options of the context-options input; an invalid value fails the run here, before a browser is started
+const contextOptions = resolveContextOptions(process.env.CONTEXT_OPTIONS);
+
 // Launches a Chromium browser instance and prepares a new page.
 const browser = await chromium.launch();
-const page = await browser.newPage();
+const page = await browser.newPage(contextOptions);
 const context = page.context();
 
 /**
@@ -41,6 +52,36 @@ const port = process.env.PORT || '';
  @default '5000'
  */
 const waitTime = process.env.WAIT_TIME || '5000';
+
+// When the navigation counts as done; the default, "load", is what page.goto waits for without an option
+const waitUntilInput = process.env.WAIT_UNTIL;
+const waitUntilResult = mapWaitUntil(waitUntilInput);
+const {warning: waitUntilWarning, notice: waitUntilNotice} = describeWaitUntil(waitUntilInput, waitUntilResult);
+if (waitUntilWarning) {
+	console.warn(waitUntilWarning);
+}
+
+if (waitUntilNotice) {
+	console.log(waitUntilNotice);
+}
+
+/**
+ Selector to wait for before the capture ends, and how (empty: do not wait).
+ */
+const waitForSelector = process.env.WAIT_FOR_SELECTOR || '';
+const waitForSelectorOptions = buildSelectorWaitOptions({
+	visible: (process.env.WAIT_FOR_SELECTOR_VISIBLE || '').toLowerCase() === 'true',
+	hidden: (process.env.WAIT_FOR_SELECTOR_HIDDEN || '').toLowerCase() === 'true',
+	timeout: process.env.WAIT_FOR_SELECTOR_TIMEOUT,
+});
+
+/**
+ Whether to report what the page does wrong (uncaught exceptions, console errors from before the capture started, a selector never reached).
+ @type {boolean}
+ @default false
+ */
+const isReportingPageProblems = (process.env.REPORT_PAGE_PROBLEMS || '').toLowerCase() === 'true';
+const pageProblems = createProblemCollector();
 
 /**
  URL of the web application.
@@ -113,8 +154,24 @@ page.on('console', message => {
 	}
 });
 
+// Right after the page was created, before it navigates: the errors of loading are the ones most worth reporting.
+// A console error the log capture records is in the comment already, so only the ones before it started count.
+if (isReportingPageProblems) {
+	pageProblems.attach(page, () => !shouldCaptureMessages);
+}
+
 const startCapture = () => {
 	shouldCaptureMessages = true;
+};
+
+/**
+ Write the problems the page reported for the comment step and show them as annotations of the run.
+ Written (empty) without report-page-problems too, so that the comment step always finds the file.
+ */
+const writePageProblems = async () => {
+	const problems = pageProblems.list();
+	annotateProblems(problems, warning, console.warn);
+	await fs.writeFile('page_problems.json', JSON.stringify(problems, null, 2));
 };
 
 /**
@@ -125,12 +182,13 @@ const startCapture = () => {
 const failEarly = async reason => {
 	await fs.writeFile('console_output.json', JSON.stringify({}, null, 2));
 	await fs.writeFile('capture_stats.json', JSON.stringify({totalObserved: 0}, null, 2));
+	await writePageProblems();
 	await browser.close();
 	exportVariable('SHOULD_FAIL_ACTION', 'true');
 	exportVariable('SHOULD_FAIL_REASON', reason);
 };
 
-const response = await page.goto(captureUrl);
+const response = await page.goto(captureUrl, {waitUntil: waitUntilResult.value});
 const statusCode = response ? response.status() : 0;
 const {ok: statusOk, reason: statusReason} = validateStatusCode(statusCode);
 
@@ -158,6 +216,12 @@ if (preScriptError) {
 	console.error(preScriptError);
 	await failEarly(`Pre-script failed: ${preScriptError.cause?.message ?? preScriptError.message}`);
 } else if (statusOk) {
+	// After the pre-script, so a selector of the page it leads to can be waited for. The logs of the wait are captured.
+	const isSelectorTimedOut = await waitForConfiguredSelector(page, waitForSelector, waitForSelectorOptions);
+	if (isSelectorTimedOut && isReportingPageProblems) {
+		pageProblems.add(`never reached ${waitForSelector}`);
+	}
+
 	await page.waitForTimeout(Number(waitTime)); // Wait for the specified time
 
 	console.log(' ');
@@ -172,6 +236,7 @@ if (preScriptError) {
 
 	await fs.writeFile('console_output.json', JSON.stringify(Object.fromEntries(consoleMessages), null, 2));
 	await fs.writeFile('capture_stats.json', JSON.stringify({totalObserved: totalMessagesObserved}, null, 2));
+	await writePageProblems();
 
 	await browser.close();
 

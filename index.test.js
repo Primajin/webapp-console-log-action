@@ -18,11 +18,14 @@ import {
 import {runPreScript} from './pre-script.js';
 
 let consoleListener;
+let pageErrorListener;
+let consoleListeners = [];
 
 const page = {
 	context: vi.fn(() => ({name: 'context'})),
 	goto: vi.fn(),
 	on: vi.fn(),
+	waitForSelector: vi.fn(),
 	waitForTimeout: vi.fn(),
 };
 
@@ -62,10 +65,13 @@ vi.mock('./utils.js', async importOriginal => {
 describe('index.js', () => {
 	beforeEach(() => {
 		consoleListener = undefined;
+		pageErrorListener = undefined;
+		consoleListeners = [];
 		page.context.mockReturnValue({name: 'context'});
 		page.goto.mockReset();
 		page.on.mockReset();
 		page.waitForTimeout.mockReset();
+		page.waitForSelector.mockReset();
 		browser.close.mockReset();
 		browser.newPage.mockClear();
 		vi.mocked(chromium.launch).mockClear();
@@ -85,7 +91,11 @@ describe('index.js', () => {
 
 		page.on.mockImplementation((event, callback) => {
 			if (event === 'console') {
-				consoleListener = callback;
+				// The log capture registers first; a later one belongs to the page problems
+				consoleListener ??= callback;
+				consoleListeners.push(callback);
+			} else if (event === 'pageerror') {
+				pageErrorListener = callback;
 			}
 		});
 	});
@@ -162,7 +172,7 @@ describe('index.js', () => {
 
 		await import('./index.js');
 
-		expect(page.goto).toHaveBeenCalledWith('https://example.com:3000/');
+		expect(page.goto).toHaveBeenCalledWith('https://example.com:3000/', {waitUntil: 'load'});
 		expect(page.waitForTimeout).toHaveBeenCalledWith(1000);
 	});
 
@@ -336,5 +346,266 @@ describe('index.js', () => {
 		await import('./index.js');
 
 		expect(validateStatusCode).toHaveBeenCalledWith(0);
+	});
+
+	test('should navigate with the load event unless wait-until says otherwise', async () => {
+		await import('./index.js');
+
+		expect(page.goto).toHaveBeenCalledWith('http://localhost', {waitUntil: 'load'});
+	});
+
+	test.each([
+		['domcontentloaded', 'domcontentloaded'],
+		['NETWORKIDLE', 'networkidle'],
+		['networkidle0', 'networkidle'],
+		['commit', 'commit'],
+	])('should navigate with wait-until %s as %s', async (input, expected) => {
+		vi.stubEnv('WAIT_UNTIL', input);
+
+		await import('./index.js');
+
+		expect(page.goto).toHaveBeenCalledWith('http://localhost', {waitUntil: expected});
+	});
+
+	test('should warn about an unknown wait-until and use load', async () => {
+		vi.stubEnv('WAIT_UNTIL', 'whenever');
+		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+		await import('./index.js');
+
+		expect(warn).toHaveBeenCalledWith('Unknown wait-until "whenever", using "load".');
+		expect(page.goto).toHaveBeenCalledWith('http://localhost', {waitUntil: 'load'});
+		warn.mockRestore();
+	});
+
+	test('should still wait for wait-time on top of wait-until', async () => {
+		vi.stubEnv('WAIT_UNTIL', 'networkidle');
+		vi.stubEnv('WAIT_TIME', '1234');
+
+		await import('./index.js');
+
+		expect(page.waitForTimeout).toHaveBeenCalledWith(1234);
+	});
+
+	test('should not wait for a selector unless one is set', async () => {
+		await import('./index.js');
+
+		expect(page.waitForSelector).not.toHaveBeenCalled();
+	});
+
+	test('should wait for the selector with the given state and timeout before the wait time', async () => {
+		vi.stubEnv('WAIT_FOR_SELECTOR', '#ready');
+		vi.stubEnv('WAIT_FOR_SELECTOR_VISIBLE', 'true');
+		vi.stubEnv('WAIT_FOR_SELECTOR_TIMEOUT', '5000');
+		const order = [];
+		page.waitForSelector.mockImplementation(async () => {
+			order.push('selector');
+		});
+		page.waitForTimeout.mockImplementation(async () => {
+			order.push('wait-time');
+		});
+
+		await import('./index.js');
+
+		expect(page.waitForSelector).toHaveBeenCalledWith('#ready', {state: 'visible', timeout: 5000});
+		expect(order).toEqual(['selector', 'wait-time']);
+	});
+
+	test('should wait for the selector to be hidden', async () => {
+		vi.stubEnv('WAIT_FOR_SELECTOR', '.spinner');
+		vi.stubEnv('WAIT_FOR_SELECTOR_HIDDEN', 'true');
+
+		await import('./index.js');
+
+		expect(page.waitForSelector).toHaveBeenCalledWith('.spinner', {state: 'hidden', timeout: 30_000});
+	});
+
+	test('should wait for the selector after the pre-script, and capture the logs of the wait', async () => {
+		vi.stubEnv('PRE_SCRIPT_PATH', './login.js');
+		vi.stubEnv('WAIT_FOR_SELECTOR', '#secure');
+		const order = [];
+		vi.mocked(runPreScript).mockImplementation(async () => {
+			order.push('pre-script');
+			return false;
+		});
+		page.waitForSelector.mockImplementation(async () => {
+			order.push('selector');
+			consoleListener({type: () => 'log', text: () => 'Logged while waiting'});
+		});
+
+		await import('./index.js');
+
+		expect(order).toEqual(['pre-script', 'selector']);
+		expect(fs.writeFile).toHaveBeenCalledWith('console_output.json', JSON.stringify({info: ['Logged while waiting']}, null, 2));
+	});
+
+	test('should go on capturing when the selector is never reached', async () => {
+		vi.stubEnv('WAIT_FOR_SELECTOR', '#never');
+		vi.stubEnv('SHOULD_FAIL_ACTION', '');
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+		page.waitForSelector.mockRejectedValue(new Error('Timeout 30000ms exceeded'));
+		page.goto.mockImplementation(async () => {
+			consoleListener({type: () => 'log', text: () => 'Before the timeout'});
+		});
+
+		await import('./index.js');
+
+		expect(page.waitForTimeout).toHaveBeenCalled();
+		expect(fs.writeFile).toHaveBeenCalledWith('console_output.json', JSON.stringify({info: ['Before the timeout']}, null, 2));
+		expect(process.env.SHOULD_FAIL_ACTION).not.toBe('true');
+	});
+
+	test('should not wait for the selector when the HTTP status check fails', async () => {
+		vi.stubEnv('WAIT_FOR_SELECTOR', '#ready');
+		vi.mocked(validateStatusCode).mockReturnValue({ok: false, reason: 'HTTP status 500 is not in the configured positive status codes (200).'});
+
+		await import('./index.js');
+
+		expect(page.waitForSelector).not.toHaveBeenCalled();
+	});
+
+	test('should open the page without context options unless context-options is set', async () => {
+		await import('./index.js');
+
+		expect(browser.newPage).toHaveBeenCalledWith({});
+	});
+
+	test('should open the page with the validated context options', async () => {
+		vi.stubEnv('CONTEXT_OPTIONS', '{"colorScheme": "dark", "viewport": {"width": 390, "height": 844}, "isMobile": true}');
+
+		await import('./index.js');
+
+		expect(browser.newPage).toHaveBeenCalledWith({colorScheme: 'dark', viewport: {width: 390, height: 844}, isMobile: true});
+	});
+
+	test('should hand the pre-script the context of the page it opened with the options', async () => {
+		vi.stubEnv('PRE_SCRIPT_PATH', './login.js');
+		vi.stubEnv('CONTEXT_OPTIONS', '{"locale": "de-DE"}');
+
+		await import('./index.js');
+
+		expect(browser.newPage).toHaveBeenCalledWith({locale: 'de-DE'});
+		expect(runPreScript).toHaveBeenCalledWith(expect.objectContaining({context: {name: 'context'}, page}));
+	});
+
+	test.each([
+		['{colorScheme: dark}', 'context-options is not valid JSON'],
+		['{"proxy": "x"}', 'unknown option "proxy"'],
+		['{"colorScheme": "darkish"}', '"colorScheme" must be one of'],
+	])('should refuse the invalid context-options %s before starting a browser', async (value, message) => {
+		vi.stubEnv('CONTEXT_OPTIONS', value);
+
+		await expect(import('./index.js')).rejects.toThrow(message);
+		expect(chromium.launch).not.toHaveBeenCalled();
+		expect(page.goto).not.toHaveBeenCalled();
+	});
+
+	describe('report-page-problems', () => {
+		const emitConsole = message => {
+			for (const listener of consoleListeners) {
+				listener(message);
+			}
+		};
+
+		const writtenProblems = () => {
+			const call = vi.mocked(fs.writeFile).mock.calls.find(([file]) => file === 'page_problems.json');
+			return call && JSON.parse(call[1]);
+		};
+
+		test('should listen for nothing and write an empty list unless it is switched on', async () => {
+			await import('./index.js');
+
+			expect(pageErrorListener).toBeUndefined();
+			expect(consoleListeners).toHaveLength(1);
+			expect(writtenProblems()).toEqual([]);
+		});
+
+		test('should report an uncaught exception, also one during the navigation, and still not fail', async () => {
+			vi.stubEnv('REPORT_PAGE_PROBLEMS', 'true');
+			vi.stubEnv('SHOULD_FAIL_ACTION', '');
+			page.goto.mockImplementation(async () => {
+				pageErrorListener(new Error('boom'));
+			});
+
+			await import('./index.js');
+
+			expect(writtenProblems()).toEqual([{text: 'pageerror: boom', count: 1}]);
+			expect(process.env.SHOULD_FAIL_ACTION).not.toBe('true');
+		});
+
+		test('should not repeat a console error the log capture records', async () => {
+			vi.stubEnv('REPORT_PAGE_PROBLEMS', 'true');
+			page.goto.mockImplementation(async () => {
+				emitConsole({type: () => 'error', text: () => 'captured error'});
+			});
+
+			await import('./index.js');
+
+			expect(fs.writeFile).toHaveBeenCalledWith('console_output.json', JSON.stringify({error: ['captured error']}, null, 2));
+			expect(writtenProblems()).toEqual([]);
+		});
+
+		test('should report a console error from before the log capture started, which is in no log', async () => {
+			vi.stubEnv('REPORT_PAGE_PROBLEMS', 'true');
+			vi.stubEnv('PRE_SCRIPT_PATH', './login.js');
+			page.goto.mockImplementation(async () => {
+				emitConsole({type: () => 'error', text: () => 'before capture'});
+			});
+			page.waitForTimeout.mockImplementation(async () => {
+				emitConsole({type: () => 'error', text: () => 'after capture'});
+			});
+
+			await import('./index.js');
+
+			expect(fs.writeFile).toHaveBeenCalledWith('console_output.json', JSON.stringify({error: ['after capture']}, null, 2));
+			expect(writtenProblems()).toEqual([{text: 'console: before capture', count: 1}]);
+		});
+
+		test('should report a selector that was never reached', async () => {
+			vi.stubEnv('REPORT_PAGE_PROBLEMS', 'true');
+			vi.stubEnv('WAIT_FOR_SELECTOR', '#never');
+			vi.spyOn(console, 'error').mockImplementation(() => {});
+			page.waitForSelector.mockRejectedValue(new Error('Timeout'));
+
+			await import('./index.js');
+
+			expect(writtenProblems()).toEqual([{text: 'never reached #never', count: 1}]);
+		});
+
+		test('should not report a selector timeout unless it is switched on', async () => {
+			vi.stubEnv('WAIT_FOR_SELECTOR', '#never');
+			vi.spyOn(console, 'error').mockImplementation(() => {});
+			page.waitForSelector.mockRejectedValue(new Error('Timeout'));
+
+			await import('./index.js');
+
+			expect(writtenProblems()).toEqual([]);
+		});
+
+		test('should annotate the problems of the run as warnings', async () => {
+			vi.stubEnv('REPORT_PAGE_PROBLEMS', 'TRUE');
+			const write = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+			page.goto.mockImplementation(async () => {
+				pageErrorListener(new Error('boom'));
+			});
+
+			await import('./index.js');
+
+			const output = write.mock.calls.map(([chunk]) => String(chunk)).join('');
+			write.mockRestore();
+			expect(output).toContain('::warning title=Page problem::pageerror: boom');
+		});
+
+		test('should write the problems also when the run ends early', async () => {
+			vi.stubEnv('REPORT_PAGE_PROBLEMS', 'true');
+			vi.mocked(validateStatusCode).mockReturnValue({ok: false, reason: 'HTTP status 500 is not in the configured positive status codes (200).'});
+			page.goto.mockImplementation(async () => {
+				pageErrorListener(new Error('server page broke'));
+			});
+
+			await import('./index.js');
+
+			expect(writtenProblems()).toEqual([{text: 'pageerror: server page broke', count: 1}]);
+		});
 	});
 });
