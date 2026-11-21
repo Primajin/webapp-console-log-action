@@ -78,7 +78,7 @@ inputs:
     required: false
     default: 'true'
   validate-status:
-    description: 'Whether to validate the HTTP response status code before log collection'
+    description: 'Whether to validate the HTTP response status code of the navigation before the logs are collected: the final status, after redirects. Set to false to disable. When it fails, the comment says why and the action fails. Defaults to true.'
     required: false
     default: 'true'
   positive-statuses:
