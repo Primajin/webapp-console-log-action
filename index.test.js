@@ -455,4 +455,40 @@ describe('index.js', () => {
 
 		expect(page.waitForSelector).not.toHaveBeenCalled();
 	});
+
+	test('should open the page without context options unless context-options is set', async () => {
+		await import('./index.js');
+
+		expect(browser.newPage).toHaveBeenCalledWith({});
+	});
+
+	test('should open the page with the validated context options', async () => {
+		vi.stubEnv('CONTEXT_OPTIONS', '{"colorScheme": "dark", "viewport": {"width": 390, "height": 844}, "isMobile": true}');
+
+		await import('./index.js');
+
+		expect(browser.newPage).toHaveBeenCalledWith({colorScheme: 'dark', viewport: {width: 390, height: 844}, isMobile: true});
+	});
+
+	test('should hand the pre-script the context of the page it opened with the options', async () => {
+		vi.stubEnv('PRE_SCRIPT_PATH', './login.js');
+		vi.stubEnv('CONTEXT_OPTIONS', '{"locale": "de-DE"}');
+
+		await import('./index.js');
+
+		expect(browser.newPage).toHaveBeenCalledWith({locale: 'de-DE'});
+		expect(runPreScript).toHaveBeenCalledWith(expect.objectContaining({context: {name: 'context'}, page}));
+	});
+
+	test.each([
+		['{colorScheme: dark}', 'context-options is not valid JSON'],
+		['{"proxy": "x"}', 'unknown option "proxy"'],
+		['{"colorScheme": "darkish"}', '"colorScheme" must be one of'],
+	])('should refuse the invalid context-options %s before starting a browser', async (value, message) => {
+		vi.stubEnv('CONTEXT_OPTIONS', value);
+
+		await expect(import('./index.js')).rejects.toThrow(message);
+		expect(chromium.launch).not.toHaveBeenCalled();
+		expect(page.goto).not.toHaveBeenCalled();
+	});
 });

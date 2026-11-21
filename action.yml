@@ -35,6 +35,10 @@ inputs:
   headline:
     description: 'Deprecated alias of comment-headline, kept for existing workflows. Use comment-headline instead.'
     required: false
+  context-options:
+    description: 'JSON object with Playwright browser context options for the capture: colorScheme (light, dark, no-preference), reducedMotion (reduce, no-preference), forcedColors (active, none), deviceScaleFactor (number above 0, at most 5), isMobile, hasTouch (booleans), viewport ({width, height} up to 10000), locale (a language tag), timezoneId (an IANA time zone), userAgent. Invalid JSON, an unknown key or a wrong type fails the run. e.g. {"colorScheme": "dark", "reducedMotion": "reduce"}'
+    required: false
+    default: ''
   max-log-level:
     description: 'The maximum log level to allow (verbose, info, warning, error). Set to error to disable failing.'
     required: false
@@ -268,6 +272,7 @@ runs:
       shell: bash
       working-directory: ${{ github.action_path }}
       env:
+        CONTEXT_OPTIONS: ${{ inputs.context-options }}
         MAX_LOG_LEVEL: ${{ inputs.max-log-level }}
         MIN_LOG_LEVEL: ${{ inputs.min-log-level }}
         NEGATIVE_STATUSES: ${{ inputs.negative-statuses }}

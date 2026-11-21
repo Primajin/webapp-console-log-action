@@ -382,6 +382,32 @@ describe('action.yml url input and its webapp-url alias', () => {
 	});
 });
 
+describe('action.yml capture step', () => {
+	const captureStep = actionYaml.split('\n    - ').find(candidate => candidate.startsWith('name: Execute Capture Script\n'));
+
+	test('hands the capture script the wait and context inputs through env', () => {
+		for (const [variable, input] of [
+			['CONTEXT_OPTIONS', 'context-options'],
+			['WAIT_UNTIL', 'wait-until'],
+			['WAIT_FOR_SELECTOR', 'wait-for-selector'],
+			['WAIT_FOR_SELECTOR_VISIBLE', 'wait-for-selector-visible'],
+			['WAIT_FOR_SELECTOR_HIDDEN', 'wait-for-selector-hidden'],
+			['WAIT_FOR_SELECTOR_TIMEOUT', 'wait-for-selector-timeout'],
+			['WAIT_TIME', 'wait-time'],
+		]) {
+			expect(captureStep, input).toContain(`${variable}: \${{ inputs.${input} }}`);
+		}
+	});
+
+	test('keeps the navigation default at load and the selector timeout at 30 seconds', () => {
+		expect(getInputBlock('wait-until')).toContain('default: \'load\'');
+		expect(getInputBlock('wait-for-selector-timeout')).toContain('default: \'30000\'');
+		expect(getInputBlock('wait-time')).toContain('default: \'2500\'');
+		expect(getInputBlock('wait-for-selector')).toContain('default: \'\'');
+		expect(getInputBlock('context-options')).toContain('default: \'\'');
+	});
+});
+
 describe('action.yml comment step', () => {
 	const formatScript = getRunScript('format_console_output');
 

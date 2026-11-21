@@ -24,6 +24,7 @@
         "action.yml",
         "comment.js",
         "comment-options.js",
+        "context-options.js",
         "post-comment.js",
         "pr-comment.js",
         "pre-script.js",

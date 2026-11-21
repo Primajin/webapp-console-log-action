@@ -2,6 +2,7 @@ import {promises as fs} from 'node:fs';
 import process from 'node:process';
 import {chromium} from 'playwright';
 import {exportVariable} from '@actions/core';
+import {resolveContextOptions} from './context-options.js';
 import {runPreScript} from './pre-script.js';
 import {
 	buildSelectorWaitOptions,
@@ -18,9 +19,12 @@ import {
 	logLevels,
 } from './utils.js';
 
+// Playwright browser context options of the context-options input; an invalid value fails the run here, before a browser is started
+const contextOptions = resolveContextOptions(process.env.CONTEXT_OPTIONS);
+
 // Launches a Chromium browser instance and prepares a new page.
 const browser = await chromium.launch();
-const page = await browser.newPage();
+const page = await browser.newPage(contextOptions);
 const context = page.context();
 
 /**
