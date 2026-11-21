@@ -1,5 +1,7 @@
 // Renders the PR comment body (pure, unit tested).
 
+import {repeatNote} from './page-problems.js';
+
 // Hidden first line that lets the next run find (and edit) its earlier comment.
 function commentMarker(tag) {
 	return `<!-- webapp-console-log-action:${tag} -->`;
@@ -95,11 +97,59 @@ function renderFooter(footer) {
 	return parts.length > 0 ? `<sub>${parts.join(' · ')}</sub>\n` : '';
 }
 
+// The problems the page reported, as list items: at most MAX_PROBLEM_LINES of at most
+// MAX_PROBLEM_LENGTH characters of text, then how many more
+export const MAX_PROBLEM_LINES = 10;
+export const MAX_PROBLEM_LENGTH = 300;
+
+// A line break in the text would end the quoted line of the warning
+const oneLine = text => text.replaceAll(/\s+/gv, ' ').trim();
+
+// At most `max` characters, cut at a whole character (not inside a surrogate pair) with an
+// ellipsis as the last one
+export function cutText(text, max) {
+	const characters = [...text];
+	return characters.length > max ? `${characters.slice(0, max - 1).join('')}…` : text;
+}
+
+// Text as an inline code span: GitHub neither links, mentions nor cross-references
+// inside code, and a backtick in the text cannot end it, because the span is
+// fenced by more backticks than the longest run in the text
+export function inlineCode(text) {
+	const longest = Math.max(0, ...(text.match(/`+/gv) ?? []).map(run => run.length));
+	const fence = '`'.repeat(longest + 1);
+	return `${fence} ${text} ${fence}`;
+}
+
+/**
+ Render the problems of the page as a warning block. The text comes from the page, so it is
+ shown as code, verbatim.
+ @param {{text: string, count: number}[] | undefined} problems The collected problems.
+ @returns {string} The block, or an empty string without problems.
+ */
+export function renderProblems(problems) {
+	if (!problems || problems.length === 0) {
+		return '';
+	}
+
+	const shown = problems.slice(0, MAX_PROBLEM_LINES).map(({text, count}) =>
+		`- ${inlineCode(cutText(oneLine(text), MAX_PROBLEM_LENGTH))}${repeatNote(count)}`);
+	const more = problems.length - shown.length;
+	const lines = [
+		`The page reported ${problems.length} problem${problems.length === 1 ? '' : 's'} that the logs above do not show:`,
+		...shown,
+		...more > 0 ? [`- …and ${more} more`] : [],
+	];
+	return `> [!WARNING]\n${lines.map(line => `> ${line}`).join('\n')}\n\n`;
+}
+
 // What a section call puts between its markers: one collapsible group titled with the
 // section name. It starts open, the logs are the point of the comment (and plain text, so
 // nothing jumps while it loads).
-function renderSectionContent(content, section) {
-	return `<details open>\n<summary><b>${escapeHtml(section.name)}</b></summary>\n\n${content.trim()}\n\n</details>\n`;
+function renderSectionContent(content, section, problems) {
+	const group = `<details open>\n<summary><b>${escapeHtml(section.name)}</b></summary>\n\n${content.trim()}\n\n</details>\n`;
+	// Outside of the details, so a collapsed section does not hide its problems
+	return `${group}\n${renderProblems(problems)}`;
 }
 
 /**
@@ -141,14 +191,14 @@ function mergeSection(previousBody, tag, slug, sectionMarkdown, frame) {
 /**
  Render the comment: the marker line, the headline, what the format step wrote and the footer.
  With a section only this call's section is rendered, into the body of the earlier comment of the tag.
- @param {{content: string, headline: string, tag: string, footer?: {sha?: string, runUrl?: string} | null, section?: {name: string, slug: string} | null, previousBody?: string}} parts The finished markdown of the logs, the headline (plain text), the tag, the footer, and for a section its name and slug and the body of the comment that is edited.
+ @param {{content: string, headline: string, tag: string, footer?: {sha?: string, runUrl?: string} | null, problems?: {text: string, count: number}[], section?: {name: string, slug: string} | null, previousBody?: string}} parts The finished markdown of the logs, the headline (plain text), the tag, the footer, the problems the page reported (shown as a warning after the logs), and for a section its name and slug and the body of the comment that is edited.
  @returns {string} The body, starting with the marker line of the tag (none for an empty tag).
  */
 function renderComment({
-	content, headline, tag, footer, section, previousBody,
+	content, headline, tag, footer, section, previousBody, problems,
 }) {
 	if (section) {
-		return mergeSection(previousBody, tag, section.slug, renderSectionContent(content, section), {
+		return mergeSection(previousBody, tag, section.slug, renderSectionContent(content, section, problems), {
 			headline,
 			footer: renderFooter(footer),
 		});
@@ -156,9 +206,9 @@ function renderComment({
 
 	// An empty tag means every run posts a new comment, so there is nothing to find it by
 	const marker = tag === '' ? '' : `${commentMarker(tag)}\n`;
-	const footerText = renderFooter(footer);
-	// A blank line before the footer, or it would become part of the last paragraph of the logs
-	const body = footerText === '' ? content : `${content.trimEnd()}\n\n${footerText}`;
+	const extras = `${renderProblems(problems)}${renderFooter(footer)}`;
+	// A blank line before the problems and the footer, or they would become part of the last paragraph of the logs
+	const body = extras === '' ? content : `${content.trimEnd()}\n\n${extras}`;
 	return `${marker}# ${headline}\n${body}`;
 }
 

@@ -154,6 +154,7 @@ v2 no longer runs `actions/checkout` inside the action. A second checkout re-che
 | `regexp-info`                       | Regular expression pattern to <a href="#filter-note" aria-describedby="footnotes-label" role="doc-noteref">filter<sup>1</sup></a> matching parts from info logs    | false    |               |
 | `regexp-verbose`                    | Regular expression pattern to <a href="#filter-note" aria-describedby="footnotes-label" role="doc-noteref">filter<sup>1</sup></a> matching parts from verbose logs | false    |               |
 | `regexp-warning`                    | Regular expression pattern to <a href="#filter-note" aria-describedby="footnotes-label" role="doc-noteref">filter<sup>1</sup></a> matching parts from warning logs | false    |               |
+| `report-page-problems`              | Report what the page does wrong: uncaught exceptions, console errors from before the log capture started and a `wait-for-selector` that timed out, as a warning block in the comment and as annotations of the run (the first 10). Never fails the run. See [Page problems](#page-problems) | false    | false         |
 | `show-emoji`                        | Whether to show emojis in the output                                                                                                                               | false    | true          |
 | `validate-status`                   | Whether to validate the HTTP response status code before log collection. Set to `false` to disable.                                                                | false    | true          |
 | `wait-time`                         | The wait time before capturing logs (in milliseconds)                                                                                                              | false    | 2500          |
@@ -170,6 +171,10 @@ v2 no longer runs `actions/checkout` inside the action. A second checkout re-che
 ### Waiting for the page
 
 `wait-until` decides when the navigation counts as done. Its default is `load`, which is what the action always waited for; screenshots-ci-action defaults to `networkidle`, here the default is kept so that existing workflows behave as before. After the navigation (and the pre-script, if you set one) the action waits for `wait-for-selector` if you set it, then for `wait-time`. Console messages are captured throughout, so what the page logs while waiting is part of the comment. A selector that never shows up is logged and the capture goes on.
+
+### Page problems
+
+With `report-page-problems: true` the comment gets a warning block for what the console logs do not show: uncaught exceptions of the page (`pageerror`), console errors that happened before the log capture started (while the navigation ran and the `pre-script-path` script prepared the page, before `startCapture()`), and a `wait-for-selector` that timed out. The same problems are annotations of the workflow run (the first 10, the rest is in the log). They never fail the run; `max-log-level` still decides that. Console errors that the capture records are not repeated: they are in the Error section already, so a console error you filter out with `regexp-error` stays out of the warning block as well.
 
 ### Local URLs
 

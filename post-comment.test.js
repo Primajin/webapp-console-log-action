@@ -35,16 +35,68 @@ const run = async (environment, comments = [], overrides = {}) => {
 		octokit,
 		pullRequest: {number: 3, head: {sha: 'abcdef0123456789'}},
 		repo: {owner: 'o', repo: 'r'},
-		readFile: async () => '## Info\n```\nhello\n```\n',
+		async readFile(file) {
+			if (file === 'page_problems.json') {
+				if (overrides.problems === undefined) {
+					throw Object.assign(new Error('no such file'), {code: 'ENOENT'});
+				}
+
+				return overrides.problems;
+			}
+
+			return '## Info\n```\nhello\n```\n';
+		},
 		log() {},
 		warn,
 		...overrides,
+		problems: undefined,
 	});
 	return {octokit, warn};
 };
 
 const created = octokit => octokit.rest.issues.createComment.mock.calls[0]?.[0].body;
 const updated = octokit => octokit.rest.issues.updateComment.mock.calls[0]?.[0];
+
+describe('postComment page problems', () => {
+	test('shows the problems the capture script wrote down below the logs', async () => {
+		const {octokit} = await run({}, [], {problems: JSON.stringify([{text: 'pageerror: boom', count: 2}])});
+		expect(created(octokit)).toContain('> [!WARNING]\n> The page reported 1 problem that the logs above do not show:\n> - ` pageerror: boom ` (2 times)\n');
+	});
+
+	test('shows no warning when the file lists no problems or does not exist', async () => {
+		const {octokit: empty} = await run({}, [], {problems: '[]'});
+		const {octokit: missing, warn} = await run({});
+		expect(created(empty)).not.toContain('WARNING');
+		expect(created(missing)).not.toContain('WARNING');
+		expect(warn).not.toHaveBeenCalled();
+	});
+
+	test('warns, and still posts the logs, when the problems file is broken', async () => {
+		const {octokit, warn} = await run({}, [], {problems: '{not json'});
+		expect(created(octokit)).toContain('hello');
+		expect(created(octokit)).not.toContain('WARNING');
+		expect(warn).toHaveBeenCalledWith(expect.stringContaining('page problems are not valid JSON'));
+	});
+
+	test('warns when the problems file cannot be read for another reason than being absent', async () => {
+		const {octokit, warn} = await run({}, [], {
+			async readFile(file) {
+				if (file === 'page_problems.json') {
+					throw Object.assign(new Error('denied'), {code: 'EACCES'});
+				}
+
+				return 'logs\n';
+			},
+		});
+		expect(created(octokit)).toContain('logs');
+		expect(warn).toHaveBeenCalledWith('The page problems could not be read (denied); they are not shown.');
+	});
+
+	test('ignores a problems file that holds something other than a list', async () => {
+		const {octokit} = await run({}, [], {problems: '{"text": "x"}'});
+		expect(created(octokit)).not.toContain('WARNING');
+	});
+});
 
 describe('postComment', () => {
 	test('posts a new comment with marker, headline, logs and footer, using the defaults', async () => {

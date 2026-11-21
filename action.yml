@@ -47,6 +47,10 @@ inputs:
     description: 'The minimum log level to capture (verbose, info, warning, error)'
     required: false
     default: 'verbose'
+  report-page-problems:
+    description: 'When true, report what the page does wrong while it is captured: uncaught exceptions, console errors from before the log capture started (the ones captured are in the Error section anyway) and a wait-for-selector that timed out. They are shown as a warning block in the PR comment and as warning annotations of the run (the first 10). It never fails the run. Defaults to false.'
+    required: false
+    default: 'false'
   pre-script-path:
     description: 'Path to a JavaScript module, relative to the workspace or absolute, whose default export is an async function receiving { browser, context, page, startCapture, url }. Use it to log in or prepare the page before the capture, for example to dismiss a cookie banner. Console capture starts when it calls startCapture(), or when it returns if it never does. If it fails, the comment reports why and the action fails.'
     required: false
@@ -284,6 +288,7 @@ runs:
         REGEXP_INFO: ${{ inputs.regexp-info }}
         REGEXP_VERBOSE: ${{ inputs.regexp-verbose }}
         REGEXP_WARNING: ${{ inputs.regexp-warning }}
+        REPORT_PAGE_PROBLEMS: ${{ inputs.report-page-problems }}
         VALIDATE_STATUS: ${{ inputs.validate-status }}
         WAIT_FOR_SELECTOR: ${{ inputs.wait-for-selector }}
         WAIT_FOR_SELECTOR_HIDDEN: ${{ inputs.wait-for-selector-hidden }}

@@ -7,9 +7,32 @@ import {resolveCommentOptions} from './comment-options.js';
 import {publishComment} from './pr-comment.js';
 
 const CONTENT_FILE = 'formatted_console_output.md';
+const PROBLEMS_FILE = 'page_problems.json';
 
 // The inputs reach this script as environment variables named like the input (COMMENT_TAG for comment-tag)
 const readInput = environment => name => environment[name.toUpperCase().replaceAll('-', '_')];
+
+// The problems the capture script wrote down; none when it wrote none (it does not run with an older script) or the file is unreadable
+async function readProblems(readFile, warn) {
+	let text;
+	try {
+		text = await readFile(PROBLEMS_FILE);
+	} catch (error) {
+		if (error.code !== 'ENOENT') {
+			warn(`The page problems could not be read (${error.message}); they are not shown.`);
+		}
+
+		return [];
+	}
+
+	try {
+		const problems = JSON.parse(text);
+		return Array.isArray(problems) ? problems : [];
+	} catch (error) {
+		warn(`The page problems are not valid JSON (${error.message}); they are not shown.`);
+		return [];
+	}
+}
 
 // Where the footer points: the commit under review and this workflow run
 function buildFooter(pullRequest, environment) {
@@ -52,12 +75,13 @@ async function postComment({
 	}
 
 	const content = await readFile(CONTENT_FILE);
+	const problems = await readProblems(readFile, warn);
 	const footer = options.footer ? buildFooter(pullRequest, environment) : null;
 	const result = await publishComment(octokit, {
 		...repo,
 		issueNumber: pullRequest.number,
 		render: previousBody => renderComment({
-			content, headline: options.headline, tag: options.markerTag, footer, section: options.section, previousBody,
+			content, headline: options.headline, tag: options.markerTag, footer, section: options.section, previousBody, problems,
 		}),
 		isMarked: createMarkerMatcher(options.tag, options.markerTag),
 		// An empty tag has nothing to find the comment by: always a new one

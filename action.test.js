@@ -394,6 +394,7 @@ describe('action.yml capture step', () => {
 			['WAIT_FOR_SELECTOR_HIDDEN', 'wait-for-selector-hidden'],
 			['WAIT_FOR_SELECTOR_TIMEOUT', 'wait-for-selector-timeout'],
 			['WAIT_TIME', 'wait-time'],
+			['REPORT_PAGE_PROBLEMS', 'report-page-problems'],
 		]) {
 			expect(captureStep, input).toContain(`${variable}: \${{ inputs.${input} }}`);
 		}

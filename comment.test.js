@@ -6,6 +6,7 @@ import {
 	mergeSection,
 	renderComment,
 	renderFooter,
+	renderProblems,
 	startsWithMarker,
 } from './comment.js';
 
@@ -172,5 +173,67 @@ describe('comment sections', () => {
 		expect(merged).not.toContain('second');
 		const bad = '<!-- webapp-console-log-action:t:section:a b -->\nx\n<!-- /webapp-console-log-action:t:section:a b -->';
 		expect(sectionComment('Login', 'login', 'login\n', bad)).not.toContain('\nx\n');
+	});
+});
+
+describe('comment problems', () => {
+	const problems = [{text: 'pageerror: boom', count: 1}, {text: 'console: Failed to load resource', count: 3}];
+
+	test('shows nothing without problems', () => {
+		expect(renderProblems()).toBe('');
+		expect(renderProblems([])).toBe('');
+	});
+
+	test('shows them as one warning block of code spans, with how often they repeated', () => {
+		expect(renderProblems(problems)).toBe([
+			'> [!WARNING]',
+			'> The page reported 2 problems that the logs above do not show:',
+			'> - ` pageerror: boom `',
+			'> - ` console: Failed to load resource ` (3 times)',
+			'',
+			'',
+		].join('\n'));
+		expect(renderProblems([problems[0]])).toContain('The page reported 1 problem that');
+	});
+
+	test('keeps page text from breaking out of its code span, line or the quote', () => {
+		const block = renderProblems([{text: 'a ``` b `` c\n> d', count: 1}]);
+		expect(block).toContain('> - ```` a ``` b `` c > d ````');
+	});
+
+	test('cuts a long text and shows only the first ten problems, then how many more', () => {
+		expect(renderProblems([{text: 'x'.repeat(400), count: 1}])).toContain(`${'x'.repeat(299)}…`);
+		const many = Array.from({length: 13}, (_, index) => ({text: `p${index}`, count: 1}));
+		const block = renderProblems(many);
+		expect(block).toContain('The page reported 13 problems');
+		expect(block).toContain('p9');
+		expect(block).not.toContain('p10');
+		expect(block).toContain('> - …and 3 more');
+	});
+
+	test('puts the problems after the logs and before the footer, with blank lines between', () => {
+		const body = renderComment({
+			content: '## Error\n```\nbad\n```\n\n', headline: 'H', tag: 't', footer: {sha: 'abcdef0'}, problems,
+		});
+		expect(body).toContain('```\n\n> [!WARNING]\n');
+		expect(body.indexOf('> [!WARNING]')).toBeLessThan(body.indexOf('<sub>'));
+		expect(body).toContain('(3 times)\n\n<sub>Commit abcdef0</sub>\n');
+	});
+
+	test('puts the problems of a section into the section, below its collapsible logs', () => {
+		const body = renderComment({
+			content: 'logs\n', headline: 'H', tag: 't', section: {name: 'Home', slug: 'home'}, problems,
+		});
+		const start = body.indexOf(':section:home -->');
+		const end = body.indexOf('<!-- /webapp-console-log-action:t:section:home -->');
+		expect(body.indexOf('</details>')).toBeGreaterThan(start);
+		expect(body.indexOf('> [!WARNING]')).toBeGreaterThan(body.indexOf('</details>'));
+		expect(body.indexOf('> [!WARNING]')).toBeLessThan(end);
+	});
+
+	test('leaves the comment as it was without problems', () => {
+		expect(renderComment({
+			content: 'x\n', headline: 'H', tag: 't', problems: [],
+		})).toBe('<!-- webapp-console-log-action:t -->\n# H\nx\n');
 	});
 });
