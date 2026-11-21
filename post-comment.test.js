@@ -1,4 +1,8 @@
 /* eslint-disable camelcase -- the GitHub REST API uses snake_case */
+import {mkdtempSync, rmSync, writeFileSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import path from 'node:path';
+import process from 'node:process';
 import {
 	describe,
 	expect,
@@ -99,6 +103,29 @@ describe('postComment page problems', () => {
 });
 
 describe('postComment', () => {
+	test('reads the logs and the problems from the files of the working directory by default', async () => {
+		const directory = mkdtempSync(path.join(tmpdir(), 'post-comment-'));
+		const previous = process.cwd();
+		writeFileSync(path.join(directory, 'formatted_console_output.md'), '## Info\nfrom file\n');
+		process.chdir(directory);
+		try {
+			const octokit = {
+				paginate: vi.fn(async () => []),
+				rest: {
+					users: {getAuthenticated: vi.fn(async () => ({data: {}}))},
+					issues: {listComments: vi.fn(), createComment: vi.fn(async () => ({data: {id: 1}})), updateComment: vi.fn()},
+				},
+			};
+			await postComment({
+				environment: {}, octokit, pullRequest: {number: 3}, repo: {owner: 'o', repo: 'r'}, log() {}, warn() {},
+			});
+			expect(octokit.rest.issues.createComment.mock.calls[0][0].body).toContain('from file');
+		} finally {
+			process.chdir(previous);
+			rmSync(directory, {recursive: true, force: true});
+		}
+	});
+
 	test('posts nothing outside of a pull request', async () => {
 		const log = vi.fn();
 		const {octokit} = await run({}, [], {pullRequest: undefined, log});
