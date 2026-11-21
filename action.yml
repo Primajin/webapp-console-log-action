@@ -70,9 +70,12 @@ inputs:
     description: 'The wait time before capturing logs'
     required: false
     default: '2500'
+  url:
+    description: 'The URL of the web application. Wins over the deprecated webapp-url when both are set; one of the two is required.'
+    required: false
   webapp-url:
-    description: 'The URL of the web application'
-    required: true
+    description: 'Deprecated alias of url, kept for existing workflows. Use url instead.'
+    required: false
 
 outputs:
   console:
@@ -83,8 +86,27 @@ runs:
   using: 'composite'
   steps:
     # Inputs reach the shell only through env: they are never interpolated into a script body.
-    # This step decides once whether webapp-url is served from the runner (is-local); every later step uses that output.
-    - name: Decide whether webapp-url is local and set the port
+    # This step decides once whether the url is served from the runner (is-local); every later step uses that output.
+    # url is the canonical input and webapp-url its deprecated alias. Every step reads the pair through
+    # the expression inputs.url || inputs.webapp-url, so url wins when both are set.
+    - name: Check url
+      id: check-url
+      run: |
+        if [[ -z "${URL_INPUT//[[:space:]]/}" && -z "${WEBAPP_URL_INPUT//[[:space:]]/}" ]]; then
+          echo '::error::url is required: set the url input to the address of the web application.'
+          exit 1
+        fi
+        if [[ -n "${URL_INPUT//[[:space:]]/}" && -n "${WEBAPP_URL_INPUT//[[:space:]]/}" ]]; then
+          echo '::warning::Both url and webapp-url are set; using url. webapp-url is deprecated, remove it.'
+        elif [[ -z "${URL_INPUT//[[:space:]]/}" ]]; then
+          echo '::warning::webapp-url is deprecated, use url instead.'
+        fi
+      shell: bash
+      env:
+        URL_INPUT: ${{ inputs.url }}
+        WEBAPP_URL_INPUT: ${{ inputs.webapp-url }}
+
+    - name: Decide whether the url is local and set the port
       id: set-port
       run: |
         # Only plain http on a loopback host is local: http-server cannot serve https, and a look-alike host
@@ -118,7 +140,7 @@ runs:
       shell: bash
       env:
         INPUT_PORT: ${{ inputs.port }}
-        WEBAPP_URL: ${{ inputs.webapp-url }}
+        WEBAPP_URL: ${{ inputs.url || inputs.webapp-url }}
 
     - name: Check comment mode
       run: |
@@ -134,7 +156,7 @@ runs:
       if: steps.set-port.outputs.is-local == 'true'
       run: |
         if [[ -z "$ARTIFACT_NAME" ]]; then
-          echo "Error: artifact-name is required when webapp-url points to localhost."
+          echo "Error: artifact-name is required when the url points to localhost."
           exit 1
         fi
       shell: bash
@@ -222,7 +244,7 @@ runs:
         REGEXP_WARNING: ${{ inputs.regexp-warning }}
         VALIDATE_STATUS: ${{ inputs.validate-status }}
         WAIT_TIME: ${{ inputs.wait-time }}
-        WEBAPP_URL: ${{ inputs.webapp-url }}
+        WEBAPP_URL: ${{ inputs.url || inputs.webapp-url }}
 
     - name: Set Output
       id: capture-console

@@ -283,7 +283,7 @@ describe('action.yml pre-script guard step', () => {
 
 	test('runs before the steps that need Node and does not check out the repository', () => {
 		const stepNames = actionYaml.matchAll(/^ {4}- name: (?<name>.+?)(?: {2}#.*)?$/gmv).map(match => match.groups.name).toArray();
-		expect(stepNames.indexOf('Check that the pre-script exists')).toBeGreaterThan(stepNames.indexOf('Decide whether webapp-url is local and set the port'));
+		expect(stepNames.indexOf('Check that the pre-script exists')).toBeGreaterThan(stepNames.indexOf('Decide whether the url is local and set the port'));
 		expect(stepNames.indexOf('Check that the pre-script exists')).toBeLessThan(stepNames.indexOf('Setup Playwright'));
 		expect(actionYaml).not.toContain('actions/checkout@');
 	});
@@ -294,5 +294,90 @@ describe('action.yml pre-script guard step', () => {
 		expect(step).toContain('PRE_SCRIPT_PATH: ${{ inputs.pre-script-path }}');
 		expect(checkPreScriptScript).not.toContain('${{');
 		/* eslint-enable no-template-curly-in-string */
+	});
+});
+
+describe('action.yml url input and its webapp-url alias', () => {
+	const checkUrlScript = getRunScript('check-url');
+
+	/**
+	 Runs the url check step with bash.
+	 @param {string} url - The url input.
+	 @param {string} webappUrl - The deprecated webapp-url input.
+	 @returns {{status: number, stdout: string}} - Exit status and stdout.
+	 */
+	const runCheckUrl = (url, webappUrl) => {
+		const result = spawnSync('bash', ['-c', checkUrlScript], {
+			encoding: 'utf8',
+			env: {PATH: process.env.PATH, URL_INPUT: url, WEBAPP_URL_INPUT: webappUrl},
+		});
+		return {status: result.status, stdout: result.stdout};
+	};
+
+	/**
+	 Returns the block of one input in action.yml.
+	 @param {string} name - The key under inputs.
+	 @returns {string} - The block, up to the next input.
+	 */
+	const getInputBlock = name => {
+		const match = new RegExp(String.raw`^ {2}${name}:\n(?<block>(?: {4}.*\n)+)`, 'mv').exec(actionYaml);
+		return match?.groups.block ?? '';
+	};
+
+	test('neither input is required, because either one satisfies the action', () => {
+		for (const name of ['url', 'webapp-url']) {
+			expect(getInputBlock(name), name).toContain('required: false');
+		}
+	});
+
+	test('marks webapp-url as deprecated and gives neither input a default', () => {
+		expect(getInputBlock('webapp-url')).toContain('Deprecated alias of url');
+		expect(getInputBlock('url')).not.toContain('default:');
+		expect(getInputBlock('webapp-url')).not.toContain('default:');
+	});
+
+	test('fails clearly when neither input is set, also for whitespace', () => {
+		for (const value of ['', '  ', '\n']) {
+			const {status, stdout} = runCheckUrl(value, value);
+			expect(status, JSON.stringify(value)).toBe(1);
+			expect(stdout).toContain('::error::url is required');
+		}
+	});
+
+	test('accepts url alone without a warning', () => {
+		expect(runCheckUrl('https://example.com', '')).toEqual({status: 0, stdout: ''});
+	});
+
+	test('accepts webapp-url alone and warns that it is deprecated', () => {
+		const {status, stdout} = runCheckUrl('', 'https://example.com');
+		expect(status).toBe(0);
+		expect(stdout).toContain('::warning::webapp-url is deprecated, use url instead.');
+	});
+
+	test('lets url win when both are set and says so', () => {
+		const {status, stdout} = runCheckUrl('https://a.example', 'https://b.example');
+		expect(status).toBe(0);
+		expect(stdout).toContain('::warning::Both url and webapp-url are set; using url.');
+	});
+
+	test('hands every step the same url, with url first', () => {
+		/* eslint-disable no-template-curly-in-string -- the literal GitHub expression syntax is what is asserted */
+		const pair = '${{ inputs.url || inputs.webapp-url }}';
+		const steps = actionYaml.split('\n    - ');
+		const usingUrl = steps.filter(step => /WEBAPP_URL: /v.test(step));
+		expect(usingUrl).toHaveLength(2);
+		for (const step of usingUrl) {
+			expect(step).toContain(`WEBAPP_URL: ${pair}`);
+		}
+
+		// Only the check step and the alias expression may read webapp-url directly
+		const readers = actionYaml.split('\n').filter(line => line.includes('${{ inputs.webapp-url') && !line.includes(pair));
+		expect(readers).toEqual(['        WEBAPP_URL_INPUT: ${{ inputs.webapp-url }}']);
+		/* eslint-enable no-template-curly-in-string */
+	});
+
+	test('runs the url check before anything uses the url', () => {
+		const stepNames = actionYaml.matchAll(/^ {4}- name: (?<name>.+?)(?: {2}#.*)?$/gmv).map(match => match.groups.name).toArray();
+		expect(stepNames[0]).toBe('Check url');
 	});
 });
