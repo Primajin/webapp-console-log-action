@@ -53,8 +53,14 @@ describe('postComment', () => {
 	});
 
 	test('uses the headline and the tag of the inputs', async () => {
-		const {octokit} = await run({HEADLINE: 'Mine', COMMENT_TAG: 'my-tag'});
+		const {octokit} = await run({COMMENT_HEADLINE: 'Mine', COMMENT_TAG: 'my-tag'});
 		expect(created(octokit)).toMatch(/^<!-- webapp-console-log-action:my-tag -->\n# Mine\n/v);
+	});
+
+	test('still takes the headline of the deprecated headline input', async () => {
+		const {octokit, warn} = await run({HEADLINE: 'Old name'});
+		expect(created(octokit)).toContain('# Old name\n');
+		expect(warn).toHaveBeenCalledWith('headline is deprecated, use comment-headline instead.');
 	});
 
 	test('edits the comment of an earlier run in place', async () => {

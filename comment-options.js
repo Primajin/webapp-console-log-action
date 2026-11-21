@@ -52,6 +52,27 @@ function resolveTag(input, fallback, warnings) {
 	return {tag, markerTag};
 }
 
+// Comment-headline is canonical, headline its deprecated alias; neither has a default in action.yml,
+// or an unset comment-headline could not be told from a set one.
+function resolveHeadline(canonical, alias, fallback, warnings) {
+	const preferred = String(canonical ?? '').trim();
+	const deprecated = String(alias ?? '').trim();
+	if (preferred !== '') {
+		if (deprecated !== '' && deprecated !== preferred) {
+			warnings.push(`Both comment-headline and headline are set; using comment-headline "${preferred}". headline is deprecated, remove it.`);
+		}
+
+		return preferred;
+	}
+
+	if (deprecated !== '') {
+		warnings.push('headline is deprecated, use comment-headline instead.');
+		return deprecated;
+	}
+
+	return fallback;
+}
+
 /**
  Resolve the comment inputs.
  @param {(name: string) => string | undefined} getInput Reads one raw input value; undefined for an input that is not set at all.
@@ -65,7 +86,7 @@ function resolveCommentOptions(getInput) {
 		mode: resolveEnum({name: 'comment-mode', allowed: MODES, fallback: defaults.mode}, getInput('comment-mode'), warnings),
 		tag,
 		markerTag,
-		headline: String(getInput('headline') ?? '').trim() || defaults.headline,
+		headline: resolveHeadline(getInput('comment-headline'), getInput('headline'), defaults.headline, warnings),
 	};
 	return {options, warnings};
 }

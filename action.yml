@@ -14,14 +14,16 @@ inputs:
     description: 'The tag to use for the comment, so that comment-mode update can find and edit it. An empty string always posts a new comment.'
     required: false
     default: 'console-log'
+  comment-headline:
+    description: "The headline of the comment. Wins over the deprecated headline when both are set. Defaults to 'Console Logs'."
+    required: false
   comment-mode:
     description: 'update edits the comment this action posted earlier on the pull request (found by comment-tag) in place, new always posts a new comment.'
     required: false
     default: 'update'
   headline:
-    description: 'The headline for the console logs comment'
+    description: 'Deprecated alias of comment-headline, kept for existing workflows. Use comment-headline instead.'
     required: false
-    default: 'Console Logs'
   max-log-level:
     description: 'The maximum log level to allow (verbose, info, warning, error). Set to error to disable failing.'
     required: false
@@ -150,6 +152,7 @@ runs:
         fi
       shell: bash
       env:
+        COMMENT_HEADLINE: ${{ inputs.comment-headline }}
         COMMENT_MODE: ${{ inputs.comment-mode }}
 
     - name: Check artifact name requirement
@@ -325,6 +328,7 @@ runs:
       shell: bash
       working-directory: ${{ github.action_path }}
       env:
+        COMMENT_HEADLINE: ${{ inputs.comment-headline }}
         COMMENT_MODE: ${{ inputs.comment-mode }}
         COMMENT_TAG: ${{ inputs.comment-tag }}
         GITHUB_TOKEN: ${{ env.GITHUB_TOKEN || github.token }}

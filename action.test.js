@@ -35,6 +35,16 @@ const getRunScript = stepId => {
 	return match.groups.body.replaceAll(/^ {8}/gmv, '');
 };
 
+/**
+ Returns the block of one input in action.yml.
+ @param {string} name - The key under inputs.
+ @returns {string} - The block, up to the next input.
+ */
+const getInputBlock = name => {
+	const match = new RegExp(String.raw`^ {2}${name}:\n(?<block>(?: {4}.*\n)+)`, 'mv').exec(actionYaml);
+	return match?.groups.block ?? '';
+};
+
 const setPortScript = getRunScript('set-port');
 const workDirectory = mkdtempSync(path.join(tmpdir(), 'set-port-'));
 let runCount = 0;
@@ -314,16 +324,6 @@ describe('action.yml url input and its webapp-url alias', () => {
 		return {status: result.status, stdout: result.stdout};
 	};
 
-	/**
-	 Returns the block of one input in action.yml.
-	 @param {string} name - The key under inputs.
-	 @returns {string} - The block, up to the next input.
-	 */
-	const getInputBlock = name => {
-		const match = new RegExp(String.raw`^ {2}${name}:\n(?<block>(?: {4}.*\n)+)`, 'mv').exec(actionYaml);
-		return match?.groups.block ?? '';
-	};
-
 	test('neither input is required, because either one satisfies the action', () => {
 		for (const name of ['url', 'webapp-url']) {
 			expect(getInputBlock(name), name).toContain('required: false');
@@ -395,10 +395,19 @@ describe('action.yml comment step', () => {
 	test('hands the script its inputs through env only', () => {
 		const step = actionYaml.split('\n    - ').find(candidate => candidate.startsWith('name: Post Console Output to PR\n'));
 		/* eslint-disable no-template-curly-in-string -- the literal GitHub expression syntax is what is asserted */
+		expect(step).toContain('COMMENT_HEADLINE: ${{ inputs.comment-headline }}');
+		expect(step).toContain('HEADLINE: ${{ inputs.headline }}');
 		expect(step).toContain('COMMENT_MODE: ${{ inputs.comment-mode }}');
 		expect(step).toContain('COMMENT_TAG: ${{ inputs.comment-tag }}');
 		expect(step).toContain('GITHUB_TOKEN: ${{ env.GITHUB_TOKEN || github.token }}');
 		/* eslint-enable no-template-curly-in-string */
+	});
+
+	test('gives neither headline input a default, so that an unset comment-headline can be told from a set one', () => {
+		expect(getInputBlock('comment-headline')).not.toContain('default:');
+		expect(getInputBlock('headline')).not.toContain('default:');
+		expect(getInputBlock('headline')).toContain('Deprecated alias of comment-headline');
+		expect(getInputBlock('comment-headline')).toContain('required: false');
 	});
 
 	test('formats the logs without a headline, which the comment script adds', () => {
