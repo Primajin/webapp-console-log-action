@@ -99,6 +99,13 @@ describe('postComment page problems', () => {
 });
 
 describe('postComment', () => {
+	test('posts nothing outside of a pull request', async () => {
+		const log = vi.fn();
+		const {octokit} = await run({}, [], {pullRequest: undefined, log});
+		expect(log).toHaveBeenCalledWith('Not a pull request: nothing to comment on.');
+		expect(octokit.rest.issues.createComment).not.toHaveBeenCalled();
+	});
+
 	test('posts a new comment with marker, headline, logs and footer, using the defaults', async () => {
 		const {octokit} = await run({});
 		expect(created(octokit)).toBe('<!-- webapp-console-log-action:console-log -->\n# Console Logs\n## Info\n```\nhello\n```\n\n<sub>Commit abcdef0</sub>\n');

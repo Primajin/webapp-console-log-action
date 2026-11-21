@@ -91,6 +91,7 @@ async function postComment({
 	log(`Comment ${result.action}: ${result.id ?? ''}`);
 }
 
+/* v8 ignore start -- the command line entry point, postComment holds the logic and is tested */
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
 	if (!process.env.GITHUB_TOKEN) {
 		throw new Error('GITHUB_TOKEN is not set: the comment cannot be posted without it.');
@@ -102,5 +103,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 		repo: context.repo,
 	});
 }
+/* v8 ignore stop */
 
 export {postComment};

@@ -44,6 +44,12 @@ describe('resolveCommentOptions', () => {
 		expect(warnings[0]).toContain('comment-tag "a-->b"');
 	});
 
+	test('warns when comment-headline and the deprecated headline differ, and uses comment-headline', () => {
+		const {options, warnings} = resolve({'comment-headline': 'New', headline: 'Old'});
+		expect(options.headline).toBe('New');
+		expect(warnings).toEqual(['Both comment-headline and headline are set; using comment-headline "New". headline is deprecated, remove it.']);
+	});
+
 	test('uses the headline input, trimmed', () => {
 		expect(resolve({headline: '  My logs '}).options.headline).toBe('My logs');
 		expect(resolve({headline: ' '.repeat(3)}).options.headline).toBe('Console Logs');

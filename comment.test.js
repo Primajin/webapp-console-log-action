@@ -142,6 +142,19 @@ describe('comment sections', () => {
 		expect(merged).not.toContain('Commit abcdef0');
 	});
 
+	test('does not take a start marker without its end marker for a section', () => {
+		const broken = '<!-- webapp-console-log-action:t:section:home -->\nhome logs\n';
+		const result = sectionComment('Login', 'login', 'login logs\n', broken);
+		expect(result).not.toContain('home logs');
+		expect(result).toContain('login logs');
+	});
+
+	test('does not take a truncated start marker for a section', () => {
+		const result = sectionComment('Login', 'login', 'login logs\n', '<!-- webapp-console-log-action:t:section:home');
+		expect(result).toContain('login logs');
+		expect(result).not.toContain(':section:home');
+	});
+
 	test('starts a fresh comment from a previous body that has no sections, such as a whole comment or a thollander one', () => {
 		const whole = renderComment({content: 'whole\n', headline: 'H', tag: 't'});
 		expect(sectionComment('Home', 'home', 'home\n', whole)).not.toContain('whole');
